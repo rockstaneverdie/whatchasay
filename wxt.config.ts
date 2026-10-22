@@ -7,11 +7,16 @@ export default defineConfig({
   // root a component is mounted in, so the content script needs no web-accessible stylesheet.
   svelte: { vite: { compilerOptions: { runes: true, css: 'injected' } } },
   manifestVersion: 3,
-  manifest: {
+  manifest: ({ mode }) => ({
     name: 'Subtext',
     description: 'A language-learning tool for watching videos with subtitles.',
     permissions: ['storage'],
-    host_permissions: ['https://generativelanguage.googleapis.com/*', 'https://api.groq.com/*'],
+    host_permissions: [
+      'https://generativelanguage.googleapis.com/*',
+      'https://api.groq.com/*',
+      // E2E builds talk to a local mock provider without the permission prompt.
+      ...(mode === 'e2e' ? ['http://localhost/*'] : []),
+    ],
     optional_host_permissions: ['http://localhost/*', 'http://127.0.0.1/*', 'https://*/*'],
     action: { default_title: 'Subtext' },
     browser_specific_settings: {
@@ -25,5 +30,5 @@ export default defineConfig({
       // Desktop is the target; this only keeps Android's minimum consistent with the consent API.
       gecko_android: { strict_min_version: '142.0' },
     },
-  },
+  }),
 });

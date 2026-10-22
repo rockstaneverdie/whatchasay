@@ -1,5 +1,5 @@
-import type { ExplainMode, ExplainRequest, ExplainResult, ProviderErrorCode } from '../ai/types';
-import type { LibraryEntry, SavedPhrase } from '../storage/idb';
+import type { ExplainMode, ExplainRequest, ExplainResult, ModelInfo, ProviderErrorCode } from '../ai/types';
+import type { CachedExplanation, LibraryEntry, SavedPhrase } from '../storage/idb';
 import type { MediaInfo, Track } from '../subtitles/types';
 
 /** content/popup/options → background, via runtime.sendMessage. */
@@ -11,7 +11,12 @@ export type BgRequest =
   | { type: 'phrases/add'; phrase: Omit<SavedPhrase, 'id' | 'createdAt'> }
   | { type: 'feedback'; cacheKey: string; value: 'up' | 'down' }
   | { type: 'open-options'; section?: 'settings' | 'phrases' }
-  | { type: 'provider/status' };
+  | { type: 'provider/status' }
+  | { type: 'provider/models' }
+  | { type: 'cache/stats' }
+  | { type: 'cache/clear' }
+  | { type: 'cache/export' }
+  | { type: 'cache/import'; records: unknown };
 
 export interface BgResponses {
   'library/get': { entry: LibraryEntry; track: Track } | null;
@@ -22,6 +27,13 @@ export interface BgResponses {
   feedback: null;
   'open-options': null;
   'provider/status': { configured: boolean; provider: string; model: string };
+  /** Errors come back as data so the options page can show the right message. */
+  'provider/models':
+    { ok: true; models: ModelInfo[] } | { ok: false; code: ProviderErrorCode | 'unknown'; message: string };
+  'cache/stats': { entries: number; bytes: number };
+  'cache/clear': null;
+  'cache/export': CachedExplanation[];
+  'cache/import': { imported: number };
 }
 
 export type BgResponse<T extends BgRequest> = BgResponses[T['type']];

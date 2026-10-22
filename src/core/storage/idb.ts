@@ -81,7 +81,9 @@ export function getDb(name = 'subtext'): Promise<DB> {
   return dbPromise;
 }
 
-/** Tests only. */
-export function resetDbForTests(): void {
+/** Tests only: closes the connection so the database can be deleted. */
+export async function resetDbForTests(): Promise<void> {
+  const p = dbPromise;
   dbPromise = null;
+  if (p) (await p).close();
 }

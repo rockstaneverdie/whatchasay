@@ -89,7 +89,10 @@ export class ProviderError extends Error {
     this.name = 'ProviderError';
   }
 
+  /** Set once text has been shown: a retry would repeat it. */
+  final = false;
+
   get retryable(): boolean {
-    return this.code === 'rate-limit' || this.code === 'server';
+    return !this.final && (this.code === 'rate-limit' || this.code === 'server');
   }
 }

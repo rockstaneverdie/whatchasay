@@ -93,7 +93,7 @@ describe('parseVtt', () => {
 describe('parseSubtitles', () => {
   it('detects the format', () => {
     expect(detectFormat('WEBVTT\n\n')).toBe('vtt');
-    expect(detectFormat('﻿WEBVTT')).toBe('vtt');
+    expect(detectFormat('\uFEFFWEBVTT')).toBe('vtt');
     expect(detectFormat('1\n00:00:01,000 --> ...', 'x.vtt')).toBe('vtt');
     expect(detectFormat('1\n00:00:01,000 --> ...', 'x.srt')).toBe('srt');
   });

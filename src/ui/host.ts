@@ -148,11 +148,18 @@ export class OverlayHost {
     if (!this.shadow.contains(range.startContainer) || !this.shadow.contains(range.endContainer)) {
       return null;
     }
+    // Snap to whole words: each word is its own `.w` span, so partial words extend to the span edges.
+    const inWord = (n: Node) => n.nodeType === Node.TEXT_NODE && !!n.parentElement?.closest('.w');
     const live = document.createRange();
-    live.setStart(range.startContainer, range.startOffset);
-    live.setEnd(range.endContainer, range.endOffset);
+    live.setStart(range.startContainer, inWord(range.startContainer) ? 0 : range.startOffset);
+    live.setEnd(
+      range.endContainer,
+      inWord(range.endContainer)
+        ? (range.endContainer.textContent?.length ?? range.endOffset)
+        : range.endOffset,
+    );
     return {
-      text,
+      text: live.toString().replace(/\s+/g, ' ').trim() || text,
       startNode: range.startContainer,
       endNode: range.endContainer,
       rect: live.getBoundingClientRect(),

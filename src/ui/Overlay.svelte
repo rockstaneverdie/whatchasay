@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Card from './Card.svelte';
   import CompactBar from './CompactBar.svelte';
   import Launcher from './Launcher.svelte';
   import MediaForm from './MediaForm.svelte';
@@ -45,6 +46,10 @@
 
 {#if ui.mediaFormOpen}
   <MediaForm {ui} {actions} />
+{/if}
+
+{#if ui.card}
+  <Card {ui} card={ui.card} {actions} {root} />
 {/if}
 
 <Toast {ui} {actions} />
