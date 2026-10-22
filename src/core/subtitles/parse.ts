@@ -1,6 +1,7 @@
+import { parseTtml } from './parse-ttml';
 import type { RawCue } from './types';
 
-export type SubtitleFormat = 'srt' | 'vtt';
+export type SubtitleFormat = 'srt' | 'vtt' | 'ttml';
 
 const TS = String.raw`(?:\d+:)?\d{1,2}:\d{1,2}(?:[.,]\d{1,3})?`;
 const TIMING_RE = new RegExp(String.raw`^\s*(${TS})\s*-->\s*(${TS})`);
@@ -88,6 +89,8 @@ function parseTimedLines(lines: string[], vtt: boolean): RawCue[] {
 
 export function detectFormat(text: string, filename?: string): SubtitleFormat {
   if (/^\uFEFF?\s*WEBVTT/.test(text)) return 'vtt';
+  if (/^\uFEFF?\s*(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*<(\w+:)?tt[\s>]/.test(text)) return 'ttml';
+  if (filename && /\.(ttml|dfxp)$/i.test(filename)) return 'ttml';
   if (filename && /\.vtt$/i.test(filename)) return 'vtt';
   return 'srt';
 }
@@ -101,8 +104,9 @@ export class SubtitleParseError extends Error {
 
 export function parseSubtitles(text: string, filename?: string): { format: SubtitleFormat; cues: RawCue[] } {
   const format = detectFormat(text, filename);
-  const lines = text.replace(/^\uFEFF/, '').split(/\r\n|\r|\n/);
-  const cues = parseTimedLines(lines, format === 'vtt');
+  const body = text.replace(/^\uFEFF/, '');
+  const cues =
+    format === 'ttml' ? parseTtml(body) : parseTimedLines(body.split(/\r\n|\r|\n/), format === 'vtt');
   if (cues.length === 0) throw new SubtitleParseError('no cues found');
   return { format, cues };
 }

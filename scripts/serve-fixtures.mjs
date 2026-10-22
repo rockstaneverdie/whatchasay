@@ -14,6 +14,7 @@ const TYPES = {
   '.css': 'text/css; charset=utf-8',
   '.srt': 'application/x-subrip; charset=utf-8',
   '.vtt': 'text/vtt; charset=utf-8',
+  '.ttml': 'application/ttml+xml; charset=utf-8',
   '.wav': 'audio/wav',
   '.webm': 'video/webm',
   '.mp4': 'video/mp4',

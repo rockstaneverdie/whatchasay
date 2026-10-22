@@ -16,6 +16,7 @@
 
   function toggleMenu() {
     ui.menuOpen = !ui.menuOpen;
+    if (ui.menuOpen) actions.refreshSniffed();
   }
 
   function run(fn: () => void) {
@@ -50,6 +51,7 @@
   {#if ui.menuOpen}
     <div class="menu glass" role="menu" tabindex="-1" onkeydown={onKeydown}>
       <button type="button" role="menuitem" onclick={run(onPickFile)}>{ui.t('menu.load')}</button>
+      <button type="button" role="menuitem" onclick={run(actions.openSearch)}>{ui.t('menu.search')}</button>
 
       {#if ui.hasFile}
         <label class="row">
@@ -61,6 +63,23 @@
             {/each}
           </select>
         </label>
+      {/if}
+
+      {#if ui.sniffActive}
+        <div class="group">
+          <span class="caption">{ui.t('menu.sniffed')}</span>
+          {#if ui.sniffed.length === 0}
+            <span class="muted">{ui.t('menu.sniffed.none')}</span>
+          {:else}
+            {#each ui.sniffed as g (g.key)}
+              <button type="button" role="menuitem" onclick={run(() => actions.importSniffed(g.key))}>
+                {g.label}{g.lang ? ` · ${g.lang}` : ''}{g.parts > 1
+                  ? ` · ${ui.t('menu.sniffed.parts', { n: g.parts })}`
+                  : ''}
+              </button>
+            {/each}
+          {/if}
+        </div>
       {/if}
 
       <div class="group">

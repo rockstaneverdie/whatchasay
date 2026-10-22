@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Invented lines for Subtext tests. -->
+<tt xmlns="http://www.w3.org/ns/ttml" xml:lang="en">
+  <body>
+    <div>
+      <p begin="00:00:01.000" end="00:00:03.000">Is this the bakery on Maple Street?</p>
+      <p begin="00:00:03.500" end="00:00:06.000">Depends.<br/>Are you the inspector?</p>
+      <p begin="00:00:06.500" end="00:00:09.000">I'm just here for <span>croissants</span>.</p>
+      <p begin="00:00:09.500" end="00:00:12.000">Then yes, it's a bakery.</p>
+    </div>
+  </body>
+</tt>

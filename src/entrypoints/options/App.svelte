@@ -6,8 +6,9 @@
   import Data from './Data.svelte';
   import Phrases from './Phrases.svelte';
   import SettingsForm from './SettingsForm.svelte';
+  import Sources from './Sources.svelte';
 
-  type Tab = 'settings' | 'phrases' | 'data';
+  type Tab = 'settings' | 'sources' | 'phrases' | 'data';
 
   let settings = $state<Settings | null>(null);
   let tab = $state<Tab>((location.hash.slice(1) as Tab) || 'settings');
@@ -32,7 +33,7 @@
   <header>
     <h1>Subtext</h1>
     <nav aria-label="sections">
-      {#each ['settings', 'phrases', 'data'] as const as id (id)}
+      {#each ['settings', 'sources', 'phrases', 'data'] as const as id (id)}
         <a href="#{id}" aria-current={tab === id ? 'page' : undefined}>{t(`opt.tab.${id}`)}</a>
       {/each}
     </nav>
@@ -41,6 +42,8 @@
   {#if settings}
     {#if tab === 'settings'}
       <SettingsForm bind:settings {t} />
+    {:else if tab === 'sources'}
+      <Sources bind:settings {t} />
     {:else if tab === 'phrases'}
       <Phrases {t} typeLabel={(type) => translate(settings?.uiLang ?? 'ru', `type.${type}` as MessageKey)} />
     {:else}

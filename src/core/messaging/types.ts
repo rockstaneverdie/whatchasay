@@ -1,5 +1,8 @@
 import type { ExplainMode, ExplainRequest, ExplainResult, ModelInfo, ProviderErrorCode } from '../ai/types';
+import type { OsDownload, OsResult, OsSearchParams } from '../sources/opensubtitles';
+import type { SniffedSummary } from '../sources/sniff';
 import type { CachedExplanation, LibraryEntry, SavedPhrase } from '../storage/idb';
+import type { SubtitleFormat } from '../subtitles/parse';
 import type { MediaInfo, Track } from '../subtitles/types';
 
 /** content/popup/options → background, via runtime.sendMessage. */
@@ -16,7 +19,22 @@ export type BgRequest =
   | { type: 'cache/stats' }
   | { type: 'cache/clear' }
   | { type: 'cache/export' }
-  | { type: 'cache/import'; records: unknown };
+  | { type: 'cache/import'; records: unknown }
+  | { type: 'os/status' }
+  | { type: 'os/search'; params: OsSearchParams }
+  | { type: 'os/download'; fileId: number }
+  | { type: 'os/login'; username: string; password: string }
+  | { type: 'os/logout' }
+  | { type: 'sniff/list' }
+  | { type: 'sniff/fetch'; key: string };
+
+/** Errors of source calls come back as data (codes match the AI provider errors). */
+export type SourceFailure = {
+  ok: false;
+  code: ProviderErrorCode | 'unknown';
+  message: string;
+  retryAfter?: number;
+};
 
 export interface BgResponses {
   'library/get': { entry: LibraryEntry; track: Track } | null;
@@ -34,6 +52,14 @@ export interface BgResponses {
   'cache/clear': null;
   'cache/export': CachedExplanation[];
   'cache/import': { imported: number };
+  'os/status': { configured: boolean; loggedIn: boolean; user?: string };
+  'os/search': { ok: true; results: OsResult[] } | SourceFailure;
+  'os/download': ({ ok: true } & OsDownload) | SourceFailure;
+  'os/login': { ok: true; user: string; allowedDownloads?: number } | SourceFailure;
+  'os/logout': null;
+  /** Subtitle files the page of the sender's tab loaded (FR-S8); `active` is false without the permission. */
+  'sniff/list': { active: boolean; groups: SniffedSummary[] };
+  'sniff/fetch': { ok: true; parts: string[]; failed: number; format: SubtitleFormat } | SourceFailure;
 }
 
 export type BgResponse<T extends BgRequest> = BgResponses[T['type']];

@@ -89,6 +89,7 @@
       <a href="player.html?spa=1">SPA swap</a>
       <a href="iframe.html">in iframe</a>
       <a href="player.html?track=1">with &lt;track&gt;</a>
+      <a href="player.html?sniff=1">loads subtitles itself</a>
       <label><input type="checkbox" id="siteKeys" checked /> site Space handler</label>
     </p>
 
@@ -166,6 +167,18 @@
           video.paused ? video.play() : video.pause();
         }
       });
+
+      // Like a player that fetches segmented captions and a TTML file by script (FR-S8).
+      if (params.get('sniff')) {
+        Promise.all(
+          ['subs/hls/seg-1.vtt', 'subs/hls/seg-2.vtt', 'subs/extra.ttml'].map((u) =>
+            fetch(u).then((r) => r.text()),
+          ),
+        ).then((parts) => {
+          window.sniffLoaded = parts.length;
+          log(`site: fetched ${parts.length} subtitle files`);
+        });
+      }
 
       if (params.get('spa')) {
         const next = document.getElementById('next');

@@ -1,11 +1,12 @@
 import { sendBg, type BgRequest } from '../core/messaging/types';
+import { saveSecrets } from '../core/storage/secrets';
 import { saveSettings, type SettingsPatch } from '../core/storage/settings';
 import { log } from './log';
 
 /**
  * Only in `--mode e2e` builds (dead code otherwise): WebDriver cannot drive moz-extension://
  * pages, so the fixture page configures the extension through window messages instead.
- * Never handles secrets.
+ * Real secrets are never touched: only throw-away OpenSubtitles keys prefixed `e2e-` can be set.
  */
 export function installE2EHooks(): void {
   log.warn('E2E build: test hooks are active');
@@ -16,6 +17,11 @@ export function installE2EHooks(): void {
     const run = async () => {
       if (op === 'settings') return saveSettings(payload as SettingsPatch);
       if (op === 'bg') return sendBg(payload as BgRequest);
+      if (op === 'os-test-key') {
+        const key = String(payload);
+        if (!key.startsWith('e2e-')) throw new Error('only e2e- keys');
+        return saveSecrets({ osApiKey: key });
+      }
       throw new Error(`unknown op ${op}`);
     };
     run().then(

@@ -5,6 +5,15 @@
 export interface Secrets {
   geminiKey?: string;
   openaiKey?: string;
+  /** OpenSubtitles consumer API key (BYOK, FR-S7). */
+  osApiKey?: string;
+  /** OpenSubtitles login token (JWT). The password itself is never stored. */
+  osToken?: string;
+  /** Epoch ms after which the token is treated as expired. */
+  osTokenExpires?: number;
+  osUser?: string;
+  /** VIP accounts get their own API host from /login. */
+  osBaseUrl?: string;
 }
 
 const KEY = 'secrets';

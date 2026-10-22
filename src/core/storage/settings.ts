@@ -28,6 +28,15 @@ export interface Settings {
   hotkeys: Record<HotkeyAction, string>;
   uiLang: UiLang;
   cacheMaxMB: number;
+  /** M4 subtitle sources. */
+  sources: {
+    /** OpenSubtitles language codes, comma separated (e.g. "en" or "en,pt-br"). */
+    osLanguages: string;
+    /** Normally the official API; tests point it at a local mock. */
+    osBaseUrl: string;
+    /** Align downloaded subtitles to the page's own track when one is available. */
+    autoSync: boolean;
+  };
 }
 
 /** Checked against ai.google.dev/gemini-api/docs/models on 2026-10-22 (see docs/decisions.md, D-007). */
@@ -47,6 +56,11 @@ export const DEFAULT_SETTINGS: Settings = {
   hotkeys: { ...DEFAULT_HOTKEYS },
   uiLang: 'ru',
   cacheMaxMB: 20,
+  sources: {
+    osLanguages: 'en',
+    osBaseUrl: 'https://api.opensubtitles.com/api/v1',
+    autoSync: true,
+  },
 };
 
 export const SETTINGS_KEY = 'settings';

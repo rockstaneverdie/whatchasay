@@ -630,6 +630,122 @@ export const scenarios = {
     if (!body.includes('MODE: detailed')) throw new Error('detailed mode not requested');
     return { saved: saved.toast, detailed: true };
   },
+  // ------------------------------------------------------------------ M4
+
+  async 'm4-opensubtitles-search-autosync'(ctx) {
+    const { driver } = ctx;
+    await setupSample(ctx); // sample.srt is the timing reference
+    await e2eCall(ctx, 'settings', {
+      sources: { osBaseUrl: 'http://localhost:5557/api/v1', osLanguages: 'en', autoSync: true },
+    });
+    await e2eCall(ctx, 'os-test-key', 'e2e-key');
+    await openMenuItem(ctx, 'Найти субтитры онлайн…');
+    const query = await driver.executeScript(
+      `return document.querySelector('${HOST}').shadowRoot.querySelector('.dialog input').value`,
+    );
+    await (await shadowFind(ctx, '.dialog form .primary')).click();
+    await driver.wait(
+      async () => (await shadowFindAll(ctx, '.dialog .result')).length === 2,
+      5000,
+      'two results',
+    );
+    await ctx.shot('m4-os-results');
+    const stats = await httpJson('http://localhost:5557/stats');
+    (await shadowFindAll(ctx, '.dialog .result'))[0].click();
+    const done = await waitFor(
+      ctx,
+      (p) => p.toast && p.toast.includes('OpenSubtitles'),
+      'download toast',
+      8000,
+    );
+    if (!done.toast.includes('сдвиг -2.3')) throw new Error(`not synced: ${done.toast}`);
+    // Synced cues line up with the original timing again.
+    await driver.executeScript(`document.querySelector('video').currentTime = 14.5`);
+    const p = await waitFor(ctx, (q) => q.active.length > 0, 'active line', 3000);
+    // M4: show info filled in from the result.
+    await openMenuItem(ctx, 'Что смотрим?');
+    const form = await driver.executeScript(
+      `return [...document.querySelector('${HOST}').shadowRoot.querySelectorAll('.form input')].map((i) => i.value)`,
+    );
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    if (p.active[0] !== 4) throw new Error(`active ${p.active} after sync`);
+    if (form[3] !== '2020') throw new Error(`media info not filled: ${form}`);
+    if (stats.lastHeaders['user-agent'] !== 'Subtext v0.1.0' || stats.lastHeaders['api-key'] !== 'e2e-key') {
+      throw new Error(`headers: ${JSON.stringify(stats.lastHeaders)}`);
+    }
+    return { query, request: stats.lastQuery, toast: done.toast, mediaForm: form };
+  },
+
+  async 'm4-opensubtitles-errors'(ctx) {
+    const { driver } = ctx;
+    await setupSample(ctx);
+    await e2eCall(ctx, 'settings', { sources: { osBaseUrl: 'http://localhost:5557/api/v1' } });
+    const out = {};
+    await e2eCall(ctx, 'os-test-key', 'e2e-bad');
+    await openMenuItem(ctx, 'Найти субтитры онлайн…');
+    await (await shadowFind(ctx, '.dialog form .primary')).click();
+    out.badKey = (await waitDialog(ctx, (t) => t.includes('не принял'), 'bad key')).slice(0, 80);
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+
+    await e2eCall(ctx, 'os-test-key', 'e2e-quota');
+    await openMenuItem(ctx, 'Найти субтитры онлайн…');
+    await (await shadowFind(ctx, '.dialog form .primary')).click();
+    await driver.wait(
+      async () => (await shadowFindAll(ctx, '.dialog .result')).length === 2,
+      5000,
+      'results',
+    );
+    (await shadowFindAll(ctx, '.dialog .result'))[0].click();
+    out.quota = (await waitDialog(ctx, (t) => t.includes('Лимит'), 'quota')).slice(0, 80);
+    await ctx.shot('m4-os-quota');
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await e2eCall(ctx, 'os-test-key', 'e2e-key');
+    return out;
+  },
+
+  async 'm4-page-loaded-subtitles'(ctx) {
+    const { driver } = ctx;
+    await driver.get(`${ctx.base}/player.html?sniff=1`);
+    await driver.wait(
+      async () => driver.executeScript('return window.sniffLoaded === 3'),
+      8000,
+      'page fetched subtitles',
+    );
+    await driver.wait(async () => driver.executeScript(`return !!document.querySelector('${HOST}')`), 8000);
+    await openMenu(ctx);
+    const items = await driver.wait(
+      async () => {
+        const t = await driver.executeScript(
+          `const g = [...document.querySelector('${HOST}').shadowRoot.querySelectorAll('.menu .group')].find((x) => x.textContent.includes('загруженные страницей'));
+           return g ? [...g.querySelectorAll('button')].map((b) => b.textContent.trim()) : null;`,
+        );
+        return t && t.length >= 2 ? t : null;
+      },
+      5000,
+      'sniffed group in menu',
+    );
+    await ctx.shot('m4-sniffed-menu');
+    await clickMenuButton(ctx, 'seg-*.vtt');
+    const vtt = await waitFor(
+      ctx,
+      (q) => q.lines === 29 && q.toast?.includes('со страницы'),
+      'segmented vtt loaded',
+      8000,
+    );
+    await openMenu(ctx);
+    await clickMenuButton(ctx, 'extra.ttml');
+    const ttml = await waitFor(ctx, (q) => q.lines === 4, 'ttml loaded', 8000);
+    const media = await driver.executeScript(
+      'return performance.getEntriesByType("resource").filter((e) => /[.](mp4|wav|m3u8)/.test(e.name)).length',
+    );
+    return {
+      items,
+      segmented: vtt.lines,
+      ttml: ttml.lines,
+      toast: vtt.toast,
+      mediaRequestsUnchanged: media <= 1,
+    };
+  },
 };
 
 // ---------------------------------------------------------------- helpers
@@ -703,5 +819,50 @@ async function waitCard(ctx, fn, what, timeout = 4000) {
     },
     timeout,
     `timed out waiting for ${what}`,
+  );
+}
+
+async function openMenu(ctx) {
+  const video = await ctx.driver.findElement(ctx.By.css('video'));
+  await ctx.driver
+    .actions()
+    .move({ origin: video, x: -300, y: -200 })
+    .move({ origin: video, x: -120, y: -60 })
+    .perform();
+  const open = await ctx.driver.executeScript(
+    `return !!document.querySelector('${HOST}').shadowRoot.querySelector('.menu')`,
+  );
+  if (!open) await (await shadowFind(ctx, '.fab')).click();
+  await shadowFind(ctx, '.menu');
+}
+
+async function clickMenuButton(ctx, text) {
+  const b = await ctx.driver.wait(
+    async () =>
+      ctx.driver.executeScript(
+        `return [...document.querySelector('${HOST}').shadowRoot.querySelectorAll('.menu button')].find((b) => b.textContent.includes(arguments[0]))`,
+        text,
+      ),
+    4000,
+    `no menu item ${text}`,
+  );
+  await b.click();
+}
+
+async function openMenuItem(ctx, text) {
+  await openMenu(ctx);
+  await clickMenuButton(ctx, text);
+}
+
+async function waitDialog(ctx, fn, what) {
+  return ctx.driver.wait(
+    async () => {
+      const t = await ctx.driver.executeScript(
+        `const d = document.querySelector('${HOST}').shadowRoot.querySelector('.dialog .body'); return d ? d.textContent : ''`,
+      );
+      return fn(t) ? t.trim() : null;
+    },
+    6000,
+    `dialog: ${what}`,
   );
 }

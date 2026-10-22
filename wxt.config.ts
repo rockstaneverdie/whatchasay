@@ -10,14 +10,18 @@ export default defineConfig({
   manifest: ({ mode }) => ({
     name: 'Subtext',
     description: 'A language-learning tool for watching videos with subtitles.',
-    permissions: ['storage'],
+    // E2E builds get webRequest up front: tests cannot click the permission grant (see D-008).
+    permissions: ['storage', ...(mode === 'e2e' ? ['webRequest'] : [])],
+    // FR-S8 opt-in: spotting subtitle files the page loads. Granted without a prompt in Firefox.
+    optional_permissions: mode === 'e2e' ? [] : ['webRequest'],
     host_permissions: [
       'https://generativelanguage.googleapis.com/*',
       'https://api.groq.com/*',
       // E2E builds talk to a local mock provider without the permission prompt.
       ...(mode === 'e2e' ? ['http://localhost/*'] : []),
     ],
-    optional_host_permissions: ['http://localhost/*', 'http://127.0.0.1/*', 'https://*/*'],
+    // Custom AI hosts (FR-A3), OpenSubtitles (FR-S7) and, for interception, all sites (FR-S8).
+    optional_host_permissions: ['http://localhost/*', 'http://127.0.0.1/*', 'https://*/*', '<all_urls>'],
     action: { default_title: 'Subtext' },
     browser_specific_settings: {
       gecko: {

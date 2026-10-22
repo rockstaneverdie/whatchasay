@@ -5,6 +5,7 @@ import type {
   ExplainType,
   ProviderErrorCode,
 } from '../core/ai/types';
+import type { SniffedSummary } from '../core/sources/sniff';
 import { DEFAULT_SETTINGS, type Settings } from '../core/storage/settings';
 import type { SubtitleEncoding } from '../core/subtitles/decode';
 import type { MediaInfo, Track } from '../core/subtitles/types';
@@ -73,6 +74,10 @@ export class OverlayState {
   launcherVisible = $state(false);
   menuOpen = $state(false);
   mediaFormOpen = $state(false);
+  searchOpen = $state(false);
+  /** FR-S8: subtitle files this tab's page loaded; `sniffActive` is false without the permission. */
+  sniffed = $state.raw<SniffedSummary[]>([]);
+  sniffActive = $state(false);
   mediaInfo = $state<MediaInfo>({});
   dragOver = $state(false);
   toast = $state<Toast | null>(null);

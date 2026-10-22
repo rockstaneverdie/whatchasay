@@ -3,6 +3,7 @@
   import CompactBar from './CompactBar.svelte';
   import Launcher from './Launcher.svelte';
   import MediaForm from './MediaForm.svelte';
+  import SearchDialog from './SearchDialog.svelte';
   import Panel from './Panel.svelte';
   import Toast from './Toast.svelte';
   import type { OverlayActions } from './actions';
@@ -46,6 +47,10 @@
 
 {#if ui.mediaFormOpen}
   <MediaForm {ui} {actions} />
+{/if}
+
+{#if ui.searchOpen}
+  <SearchDialog {ui} {actions} />
 {/if}
 
 {#if ui.card}

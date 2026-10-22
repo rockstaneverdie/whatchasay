@@ -1,3 +1,5 @@
+import type { BgResponses } from '../core/messaging/types';
+import type { OsResult, OsSearchParams } from '../core/sources/opensubtitles';
 import type { SubtitleEncoding } from '../core/subtitles/decode';
 import type { MediaInfo } from '../core/subtitles/types';
 import type { ExplainTarget } from './state.svelte';
@@ -18,6 +20,13 @@ export interface OverlayActions {
   nudgeOffset(deltaMs: number): void;
   openSettings(): void;
   dismissToast(): void;
+
+  /** M4: OpenSubtitles search dialog and page-loaded subtitle files. */
+  openSearch(): void;
+  osSearch(params: OsSearchParams): Promise<BgResponses['os/search']>;
+  osLoad(result: OsResult): Promise<void>;
+  refreshSniffed(): void;
+  importSniffed(key: string): void;
 
   explain(target: ExplainTarget): void;
   closeCard(resume: boolean): void;

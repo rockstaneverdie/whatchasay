@@ -62,6 +62,8 @@ export class SubtextApp {
   /** Set by the explain client (M2). */
   explainHandler: ((target: ExplainTarget) => void) | null = null;
   cardActions: Partial<OverlayActions> = {};
+  /** Set by the sources client (M4). */
+  sourceActions: Partial<OverlayActions> = {};
 
   constructor(private readonly ctx: AppContext) {}
 
@@ -321,9 +323,10 @@ export class SubtextApp {
     }
   }
 
-  async loadTrack(track: Track) {
+  /** Loads a track from a non-file source; `media` (e.g. from OpenSubtitles) wins over the page title guess. */
+  async loadTrack(track: Track, media?: MediaInfo) {
     this.setTrack(track);
-    this.state.mediaInfo = guessMediaInfo(undefined, document.title);
+    this.state.mediaInfo = { ...guessMediaInfo(undefined, document.title), ...(media ?? {}) };
     this.mediaKey ||= await this.computeMediaKey();
     await sendBg({
       type: 'library/save',
@@ -365,6 +368,18 @@ export class SubtextApp {
     if (!this.video || e.isComposing) return;
     const editable = isEditableTarget(e);
     const plain = !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey;
+    // Esc closes our dialogs and the menu wherever the focus is (the card has its own rule below).
+    if (
+      e.code === 'Escape' &&
+      !this.state.card &&
+      (this.state.searchOpen || this.state.mediaFormOpen || this.state.menuOpen)
+    ) {
+      swallow(e);
+      this.state.searchOpen = false;
+      this.state.mediaFormOpen = false;
+      this.state.menuOpen = false;
+      return;
+    }
     if (this.state.card && !editable) {
       // FR-I4: Space closes the card and resumes; the site's player must not see it.
       if (e.code === 'Space' && plain) {
@@ -578,6 +593,16 @@ export class SubtextApp {
       if (this.explainHandler) this.explainHandler(target);
       else this.video?.pause();
     },
+    openSearch: () => {
+      this.state.menuOpen = false;
+      this.state.searchOpen = true;
+    },
+    osSearch: (params) =>
+      this.sourceActions.osSearch?.(params) ??
+      Promise.resolve({ ok: false, code: 'unknown', message: 'unavailable' }),
+    osLoad: (result) => this.sourceActions.osLoad?.(result) ?? Promise.resolve(),
+    refreshSniffed: () => this.sourceActions.refreshSniffed?.(),
+    importSniffed: (key) => this.sourceActions.importSniffed?.(key),
     closeCard: (resume) => this.cardActions.closeCard?.(resume),
     explainMore: () => this.cardActions.explainMore?.(),
     refreshCard: () => this.cardActions.refreshCard?.(),
