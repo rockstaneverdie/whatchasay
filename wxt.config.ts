@@ -1,0 +1,26 @@
+import { defineConfig } from 'wxt';
+
+export default defineConfig({
+  srcDir: 'src',
+  modules: ['@wxt-dev/module-svelte'],
+  manifestVersion: 3,
+  manifest: {
+    name: 'Subtext',
+    description: 'A language-learning tool for watching videos with subtitles.',
+    permissions: ['storage'],
+    host_permissions: ['https://generativelanguage.googleapis.com/*', 'https://api.groq.com/*'],
+    optional_host_permissions: ['http://localhost/*', 'http://127.0.0.1/*', 'https://*/*'],
+    action: { default_title: 'Subtext' },
+    browser_specific_settings: {
+      gecko: {
+        id: 'subtext@subtext-extension.invalid',
+        // 140: built-in data-collection consent (see docs/decisions.md, D-003).
+        strict_min_version: '140.0',
+        // Subtitle text (possibly from the page's <track>) goes to the AI provider the user picked.
+        data_collection_permissions: { required: ['websiteContent'] },
+      },
+      // Desktop is the target; this only keeps Android's minimum consistent with the consent API.
+      gecko_android: { strict_min_version: '142.0' },
+    },
+  },
+});

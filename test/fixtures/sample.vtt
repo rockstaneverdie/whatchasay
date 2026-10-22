@@ -1,0 +1,40 @@
+WEBVTT
+Kind: captions
+Language: en
+
+NOTE
+Invented dialogue written for Subtext tests. Not taken from any show.
+
+STYLE
+::cue { color: yellow }
+
+intro
+00:01.000 --> 00:03.500 align:start position:10%
+[wind chimes]
+
+00:04.000 --> 00:07.000
+<v Rosa>Who left the garden gate open?</v>
+
+00:07.500 --> 00:10.800
+<v Ben>Not me. I've been glued to the couch all day.
+
+3
+00:11.300 --> 00:14.900
+<v Rosa>That's what I'm afraid of.
+The goats are <i>loose</i> again.
+
+00:15.400 --> 00:18.600
+<v Ben>Great. There goes the neighbourhood.
+
+00:19.100 --> 00:22.700
+- Grab the bucket.
+- Which one?
+
+00:23.200 --> 00:26.800
+<v Rosa>The one with the <00:00:24.000>carrots, <00:00:25.000>genius.
+
+00:27.300 --> 00:30.000
+♪ ice-cream van jingle ♪
+
+00:30.500 --> 00:34.200
+<v Ben>Okay, plan B: we follow the music.

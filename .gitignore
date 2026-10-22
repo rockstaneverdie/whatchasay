@@ -1,0 +1,10 @@
+node_modules
+.output
+.wxt
+web-ext-artifacts
+test/fixtures/media
+eval/reports
+.env
+.env.*
+*.log
+.e2e

@@ -1,0 +1,4 @@
+﻿allowBuilds:
+  esbuild: true
+# Windows MAX_PATH: keep the virtual store on a short path (see docs/decisions.md)
+virtualStoreDir: C:\Users\rocksta\.subtext-vs
