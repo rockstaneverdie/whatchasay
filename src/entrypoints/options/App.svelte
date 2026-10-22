@@ -2,6 +2,9 @@
   import { onMount } from 'svelte';
   import { DEFAULT_SETTINGS, loadSettings, type Settings } from '../../core/storage/settings';
   import { pageT, type PageKey } from '../../i18n/pages';
+  import { translate, type MessageKey } from '../../i18n';
+  import Data from './Data.svelte';
+  import Phrases from './Phrases.svelte';
   import SettingsForm from './SettingsForm.svelte';
 
   type Tab = 'settings' | 'phrases' | 'data';
@@ -38,6 +41,10 @@
   {#if settings}
     {#if tab === 'settings'}
       <SettingsForm bind:settings {t} />
+    {:else if tab === 'phrases'}
+      <Phrases {t} typeLabel={(type) => translate(settings?.uiLang ?? 'ru', `type.${type}` as MessageKey)} />
+    {:else}
+      <Data bind:settings {t} />
     {/if}
   {/if}
 </main>

@@ -7,7 +7,8 @@ import { sendBg, type TabRequest, type TabStatus } from '../core/messaging/types
 import { loadSettings, onSettingsChanged, saveSettings } from '../core/storage/settings';
 import type { SubtitleEncoding } from '../core/subtitles/decode';
 import { guessMediaInfo } from '../core/subtitles/media-info';
-import { trackFromFile } from '../core/subtitles/track';
+import { buildTrack, trackFromFile } from '../core/subtitles/track';
+import { listPageTracks, readPageTrack } from '../core/player/page-tracks';
 import type { MediaInfo, Track } from '../core/subtitles/types';
 import { sha256Hex } from '../utils/hash';
 import { log, safe } from '../utils/log';
@@ -171,6 +172,16 @@ export class SubtextApp {
     for (const t of ['seeking', 'seeked', 'timeupdate', 'ratechange', 'loadedmetadata'])
       on(t, this.updateClock);
     on('loadstart', () => this.onSourceChange());
+    on('loadedmetadata', this.refreshPageTracks);
+    const tt = video.textTracks;
+    const onTracks = () => safe(this.refreshPageTracks);
+    tt.addEventListener('addtrack', onTracks);
+    tt.addEventListener('removetrack', onTracks);
+    this.videoCleanup.push(() => {
+      tt.removeEventListener('addtrack', onTracks);
+      tt.removeEventListener('removetrack', onTracks);
+    });
+    this.refreshPageTracks();
 
     const ro = new ResizeObserver(() => safe(this.reposition));
     ro.observe(video);
@@ -208,6 +219,28 @@ export class SubtextApp {
     const hadSource = this.lastSrc !== '';
     this.lastSrc = src;
     if (hadSource) setTimeout(() => void this.restoreForPage(true), 300);
+  }
+
+  private refreshPageTracks = () => {
+    this.state.pageTracks = this.video ? listPageTracks(this.video) : [];
+  };
+
+  private async importPageTrack(index: number) {
+    const video = this.video;
+    const info = this.state.pageTracks.find((t) => t.index === index);
+    if (!video || !info) return;
+    const raw = await readPageTrack(video, index);
+    if (raw.length === 0) {
+      this.toast(this.state.t('toast.trackFailed'));
+      return;
+    }
+    const track = await buildTrack(raw, {
+      label: info.label,
+      source: 'dom-track',
+      ...(info.lang ? { lang: info.lang } : {}),
+    });
+    await this.loadTrack(track);
+    this.toast(this.state.t('toast.trackImported', { label: info.label }));
   }
 
   private reposition = () => {
@@ -510,7 +543,8 @@ export class SubtextApp {
       if (v !== this.video) this.attach(v);
       this.refreshVideoChoices();
     },
-    importPageTrack: () => {},
+    importPageTrack: (index) =>
+      void this.importPageTrack(index).catch((e) => log.warn('track import failed', e)),
     nudgeOffset: (deltaMs) => {
       this.state.offsetMs = Math.round(this.state.offsetMs + deltaMs);
       this.updateClock();

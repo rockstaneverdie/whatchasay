@@ -516,6 +516,120 @@ export const scenarios = {
     if (leaks.length) throw new Error(`content script references: ${leaks}`);
     return { checked: 'content.js has no key handling code' };
   },
+
+  // ------------------------------------------------------------------ M3
+
+  async 'm3-iframe-player'(ctx) {
+    const { driver, By } = ctx;
+    await driver.get(`${ctx.base}/iframe.html`);
+    const frame = await driver.wait(ctx.until.elementLocated(By.css('iframe')), 5000);
+    const topHasHost = await driver.executeScript(`return !!document.querySelector('${HOST}')`);
+    await driver.switchTo().frame(frame);
+    await driver.wait(async () => driver.executeScript(`return !!document.querySelector('${HOST}')`), 8000);
+    if ((await dropFixture(ctx, '/sample.srt', 'Maple.Street.S01E03.srt')) !== true)
+      throw new Error('drop failed');
+    const p = await waitFor(ctx, (q) => q.lines === 29, 'panel in iframe');
+    await driver.executeScript(`document.querySelector('video').currentTime = 14.5`);
+    await ctx.sleep(500);
+    await driver.switchTo().defaultContent();
+    await ctx.shot('m3-iframe');
+    if (topHasHost) throw new Error('overlay must not mount in the top page without a video');
+    return { parent: p.parent, lines: p.lines };
+  },
+
+  async 'm3-spa-swap'(ctx) {
+    const { driver, By } = ctx;
+    await driver.get(`${ctx.base}/player.html?spa=1`);
+    await driver.wait(async () => driver.executeScript(`return !!document.querySelector('${HOST}')`), 8000);
+    await dropFixture(ctx, '/sample.srt', 'Maple.Street.S01E03.srt');
+    await waitFor(ctx, (q) => q.lines === 29, 'track for episode 3');
+    await driver.findElement(By.id('next')).click();
+    // The old <video> is gone; the overlay re-attaches to the new one and drops the old track.
+    const p = await waitFor(ctx, (q) => q.lines === 0 && q.panel, 'empty panel on the new video', 6000);
+    const sameVideo = await driver.executeScript(
+      `const h = document.querySelector('${HOST}'); return h.parentElement.contains(document.querySelector('video'))`,
+    );
+    await ctx.shot('m3-spa-swap');
+    if (!sameVideo) throw new Error('overlay not attached next to the new video');
+    // Loading a track for episode 4, then going back restores episode 3's track (per-page library).
+    await dropFixture(ctx, '/sample.vtt', 'garden.vtt');
+    await waitFor(ctx, (q) => q.lines === 9, 'track for episode 4');
+    return { toast: p.toast };
+  },
+
+  async 'm3-page-track-import'(ctx) {
+    const { driver, By } = ctx;
+    await driver.get(`${ctx.base}/player.html?track=1`);
+    await driver.wait(async () => driver.executeScript(`return !!document.querySelector('${HOST}')`), 8000);
+    await driver
+      .actions()
+      .move({ origin: await driver.findElement(By.css('video')) })
+      .perform();
+    await (await shadowFind(ctx, '.fab')).click();
+    const item = await driver.wait(
+      async () =>
+        driver.executeScript(
+          `return [...document.querySelector('${HOST}').shadowRoot.querySelectorAll('.group button')].find((b) => b.textContent.includes('English (fixture)'))`,
+        ),
+      4000,
+      'page track not listed',
+    );
+    await item.click();
+    const p = await waitFor(ctx, (q) => q.lines === 9, 'imported page track', 6000);
+    const site = await driver.executeScript(`return document.querySelector('video').textTracks[0].mode`);
+    await ctx.shot('m3-page-track');
+    if (site !== 'disabled') throw new Error(`site track mode changed to ${site}`);
+    return { toast: p.toast, siteTrackMode: site };
+  },
+
+  async 'm3-compact-and-english'(ctx) {
+    const { driver } = ctx;
+    await setupSample(ctx);
+    await e2eCall(ctx, 'settings', { uiLang: 'en', panel: { compact: 'on' } });
+    let p;
+    let menu;
+    try {
+      await driver.executeScript(`document.querySelector('video').currentTime = 18.6`);
+      p = await waitFor(ctx, (q) => q.compact && q.active.length === 1, 'compact bar', 4000);
+      // Move from outside onto the video so a real mousemove reaches the page.
+      const video = await driver.findElement(ctx.By.css('video'));
+      await driver
+        .actions()
+        .move({ origin: video, x: -400, y: -250 })
+        .move({ origin: video, x: -100, y: -50 })
+        .perform();
+      await (await shadowFind(ctx, '.fab')).click();
+      menu = await driver.executeScript(
+        `return document.querySelector('${HOST}').shadowRoot.querySelector('.menu').textContent`,
+      );
+      await ctx.shot('m3-compact-en');
+    } finally {
+      await e2eCall(ctx, 'settings', { uiLang: 'ru', panel: { compact: 'auto' } });
+    }
+    if (!menu.includes('Load subtitles') || !menu.includes('Settings'))
+      throw new Error(`menu not English: ${menu}`);
+    return { compact: p.compact, menu: menu.slice(0, 60) };
+  },
+
+  async 'm3-save-phrase-and-more'(ctx) {
+    const { driver } = ctx;
+    await setModel(ctx, 'ok');
+    await setupSample(ctx);
+    await driver.executeScript(`document.querySelector('video').currentTime = 14.4`);
+    await ctx.sleep(300);
+    await (await shadowFind(ctx, '.panel .line.active .w:nth-child(6)')).click();
+    await waitCard(ctx, (c) => c.status === 'done', 'card', 8000);
+    await (await shadowFind(ctx, '.card [aria-label="Сохранить"]')).click();
+    const saved = await waitFor(ctx, (q) => q.toast && q.toast.includes('Фраза сохранена'), 'saved toast');
+    await (await shadowFind(ctx, '.card [aria-label="Полезно"]')).click();
+    const more = await shadowFind(ctx, '.card .actions .btn');
+    await more.click();
+    await waitCard(ctx, (c) => c.status === 'done' && !c.text.includes('Подробнее'), 'detailed card', 8000);
+    const body = (await httpJson('http://localhost:5556/stats')).lastBody.messages[1].content;
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    if (!body.includes('MODE: detailed')) throw new Error('detailed mode not requested');
+    return { saved: saved.toast, detailed: true };
+  },
 };
 
 // ---------------------------------------------------------------- helpers
