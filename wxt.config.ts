@@ -3,6 +3,9 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   srcDir: 'src',
   modules: ['@wxt-dev/module-svelte'],
+  // The module ignores svelte.config.js. `css: 'injected'` appends component CSS to the shadow
+  // root a component is mounted in, so the content script needs no web-accessible stylesheet.
+  svelte: { vite: { compilerOptions: { runes: true, css: 'injected' } } },
   manifestVersion: 3,
   manifest: {
     name: 'Subtext',
