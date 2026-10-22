@@ -2,9 +2,9 @@ import type { MediaInfo } from './types';
 
 const PATTERNS: RegExp[] = [
   // Name.S01E02, Name S1E2, name_s01e02
-  /^(?<name>.*?)[\s._-]*\bS(?<season>\d{1,2})[\s._-]?E(?<episode>\d{1,3})\b/i,
+  /^(?<name>.*?)(?:^|[\s._-]+)S(?<season>\d{1,2})[\s._-]?E(?<episode>\d{1,3})(?!\d)/i,
   // Name 1x02
-  /^(?<name>.*?)[\s._-]*\b(?<season>\d{1,2})x(?<episode>\d{1,3})\b/i,
+  /^(?<name>.*?)(?:^|[\s._-]+)(?<season>\d{1,2})x(?<episode>\d{1,3})(?!\d)/i,
   // Name - Season 1 Episode 2
   /^(?<name>.*?)[\s._,:-]*\bSeason[\s._]*(?<season>\d{1,2})[\s._,:-]*Episode[\s._]*(?<episode>\d{1,3})\b/i,
 ];
