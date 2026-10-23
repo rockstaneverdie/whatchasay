@@ -150,6 +150,9 @@
         </div>
       {/if}
 
+      <button type="button" role="menuitem" onclick={actions.toggleFullscreen}
+        >{ui.t('menu.fullscreen')}</button
+      >
       <button type="button" role="menuitem" onclick={run(actions.openSettings)}
         >{ui.t('menu.settings')}</button
       >

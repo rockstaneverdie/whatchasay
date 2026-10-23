@@ -31,6 +31,7 @@ function actionsMock(): OverlayActions {
     importPageTrack: fn(),
     nudgeOffset: fn(),
     openSettings: fn(),
+    toggleFullscreen: fn(),
     dismissToast: fn(),
     openSearch: fn(),
     osSearch: fn(),

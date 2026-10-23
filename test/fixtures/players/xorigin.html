@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cross-origin embed – Fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        font:
+          14px system-ui,
+          sans-serif;
+        background: #f4efe6;
+      }
+      iframe {
+        width: 1010px;
+        height: 760px;
+        border: 2px solid #b9a;
+      }
+      .tall {
+        height: 1600px;
+      }
+    </style>
+  </head>
+  <body>
+    <p id="outside">
+      This page (localhost) embeds a player from another origin (127.0.0.1). Click here, outside the frame,
+      then use the hotkeys: they must reach the player (FR-V5).
+    </p>
+    <iframe id="embed" src="http://127.0.0.1:5555/player.html" allow="fullscreen" allowfullscreen></iframe>
+    <div class="tall"></div>
+  </body>
+</html>

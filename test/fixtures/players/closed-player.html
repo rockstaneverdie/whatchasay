@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Closed web component player – Fixture</title>
+  </head>
+  <body>
+    <p>
+      The player hides its &lt;video&gt; in a closed shadow root. Nothing may be mounted; the popup explains
+      why.
+    </p>
+    <script>
+      class LockedPlayer extends HTMLElement {
+        connectedCallback() {
+          const root = this.attachShadow({ mode: 'closed' });
+          root.innerHTML = `<div style="position:relative;width:800px;height:450px;background:#111">
+            <video src="../media/tone.wav" style="width:100%;height:100%" preload="auto"></video></div>`;
+        }
+      }
+      customElements.define('locked-player', LockedPlayer);
+      document.body.append(document.createElement('locked-player'));
+    </script>
+  </body>
+</html>

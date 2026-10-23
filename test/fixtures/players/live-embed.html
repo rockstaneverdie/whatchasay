@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Live embed – Fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        font:
+          14px system-ui,
+          sans-serif;
+        background: #eef2ea;
+      }
+      iframe {
+        width: 960px;
+        height: 540px;
+        border: 0;
+      }
+      .tall {
+        height: 1400px;
+      }
+    </style>
+  </head>
+  <body>
+    <p id="outside">
+      A local page embedding a real third-party player (for `pnpm e2e live`). Click here, then use hotkeys.
+    </p>
+    <iframe id="embed" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+    <div class="tall"></div>
+    <script>
+      // Only the embeds the live scenarios use; both are Big Buck Bunny (Blender Foundation, CC-BY).
+      const EMBEDS = {
+        vimeo: 'https://player.vimeo.com/video/1084537',
+        archive: 'https://archive.org/embed/BigBuckBunny_124',
+      };
+      const which = new URLSearchParams(location.search).get('embed');
+      if (EMBEDS[which]) document.getElementById('embed').src = EMBEDS[which];
+    </script>
+  </body>
+</html>

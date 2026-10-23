@@ -100,6 +100,7 @@ export class ExplainClient {
       text: '',
       cached: false,
     };
+    this.app.publishState();
     try {
       this.send({ type: 'start', reqId, req, ...(force ? { force: true } : {}) });
     } catch (e) {
@@ -131,6 +132,7 @@ export class ExplainClient {
     if (!this.state.card) return;
     this.cancelCurrent();
     this.state.card = null;
+    this.app.publishState();
     if (resume) void this.app.currentVideo?.play().catch(() => {});
   }
 

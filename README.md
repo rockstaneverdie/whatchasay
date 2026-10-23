@@ -13,21 +13,22 @@ Spec: [docs/TZ.md](docs/TZ.md) · decisions: [docs/decisions.md](docs/decisions.
 
 ## Commands
 
-| command               | what it does                                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------- |
-| `pnpm install`        | dependencies (+ `wxt prepare`)                                                              |
-| `pnpm dev`            | dev build with reload in Firefox                                                            |
-| `pnpm build`          | production build → `.output/firefox-mv3`                                                    |
-| `pnpm zip`            | `.output/whatchasay-<version>-firefox.zip`                                                  |
-| `pnpm lint`           | ESLint + Prettier check + svelte-check                                                      |
-| `pnpm test`           | Vitest unit and component tests                                                             |
-| `pnpm web-ext:lint`   | `web-ext lint` on the production build                                                      |
-| `pnpm fixtures:media` | generates test media (`test/fixtures/media`, not in git)                                    |
-| `pnpm fixtures`       | serves `test/fixtures` on http://localhost:5555                                             |
-| `pnpm web-ext:run`    | opens Firefox with the built extension on the fixture player (run `pnpm fixtures` too)      |
-| `pnpm e2e [prefix…]`  | builds the e2e variant and runs WebDriver scenarios in real Firefox, screenshots in `.e2e/` |
-| `pnpm e2e live`       | live check on a real legal site (Wikimedia Commons, Sintel CC-BY); needs the internet       |
-| `pnpm eval`           | prompt quality eval, see below                                                              |
+| command               | what it does                                                                                 |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| `pnpm install`        | dependencies (+ `wxt prepare`)                                                               |
+| `pnpm dev`            | dev build with reload in Firefox                                                             |
+| `pnpm build`          | production build → `.output/firefox-mv3`                                                     |
+| `pnpm zip`            | `.output/whatchasay-<version>-firefox.zip`                                                   |
+| `pnpm lint`           | ESLint + Prettier check + svelte-check                                                       |
+| `pnpm test`           | Vitest unit and component tests                                                              |
+| `pnpm web-ext:lint`   | `web-ext lint` on the production build                                                       |
+| `pnpm fixtures:media` | generates test media (`test/fixtures/media`, not in git)                                     |
+| `pnpm fixtures`       | serves `test/fixtures` on http://localhost:5555                                              |
+| `pnpm web-ext:run`    | opens Firefox with the built extension on the fixture player (run `pnpm fixtures` too)       |
+| `pnpm e2e [prefix…]`  | builds the e2e variant and runs WebDriver scenarios in real Firefox, screenshots in `.e2e/`  |
+| `pnpm e2e m4b`        | third-party player scenarios: cross-origin iframe, shadow DOM, layers, fullscreen, episodes  |
+| `pnpm e2e live`       | live checks on legal sites (Commons Sintel, Vimeo/archive.org embeds, CC-BY); needs internet |
+| `pnpm eval`           | prompt quality eval, see below                                                               |
 
 ## Trying it
 

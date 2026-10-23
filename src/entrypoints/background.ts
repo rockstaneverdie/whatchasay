@@ -1,5 +1,5 @@
 import { ExplainService } from '../core/ai/explain-service';
-import { route } from '../core/messaging/bg-router';
+import { frames, route, saveFrames } from '../core/messaging/bg-router';
 import { EXPLAIN_PORT, type BgRequest } from '../core/messaging/types';
 import { sniffer } from '../core/sources/sniffer';
 
@@ -11,7 +11,11 @@ export default defineBackground(() => {
   browser.permissions.onRemoved.addListener((p) => {
     if (p.permissions?.includes('webRequest')) sniffer.stop();
   });
-  browser.tabs.onRemoved.addListener((tabId) => sniffer.store.clear(tabId));
+  browser.tabs.onRemoved.addListener((tabId) => {
+    sniffer.store.clear(tabId);
+    frames.forget(tabId);
+    saveFrames();
+  });
 
   const explain = new ExplainService();
 

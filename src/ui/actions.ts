@@ -19,6 +19,8 @@ export interface OverlayActions {
   importPageTrack(index: number): void;
   nudgeOffset(deltaMs: number): void;
   openSettings(): void;
+  /** FR-V10: fullscreen on the player container so the subtitles stay visible. User gesture only. */
+  toggleFullscreen(): void;
   dismissToast(): void;
 
   /** M4: OpenSubtitles search dialog and page-loaded subtitle files. */

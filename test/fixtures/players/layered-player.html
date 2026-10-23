@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Maple Street S01E03 – Layered player</title>
+    <script>
+      // Like many players: keyboard handled on window in the capture phase, registered as early as
+      // the page can (FR-V8). Space toggles playback.
+      window.siteToggles = 0;
+      window.addEventListener(
+        'keydown',
+        (e) => {
+          if (e.code !== 'Space') return;
+          e.preventDefault();
+          window.siteToggles++;
+          const v = document.querySelector('video');
+          if (v) v.paused ? v.play() : v.pause();
+        },
+        true,
+      );
+    </script>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        font:
+          14px system-ui,
+          sans-serif;
+        background: #f1eef6;
+      }
+      .player {
+        position: relative;
+        width: 960px;
+        height: 540px;
+        background: radial-gradient(circle at 30% 35%, #3a4a6b, #101418 70%);
+      }
+      /* The media box is its own stacking context, below the player's layers. */
+      .media {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+      }
+      .media video {
+        width: 100%;
+        height: 100%;
+      }
+      /* A transparent click catcher over the whole picture. */
+      .catcher {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+      }
+      .controls {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 6;
+        padding: 8px;
+        display: flex;
+        gap: 8px;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+      }
+    </style>
+  </head>
+  <body>
+    <div class="player" id="player">
+      <div class="media" id="media"><video src="../media/tone.wav" preload="auto"></video></div>
+      <div class="catcher" id="catcher"></div>
+      <div class="controls">
+        <button id="play">Play</button>
+        <button id="fs">Fullscreen</button>
+      </div>
+    </div>
+    <script>
+      const v = document.querySelector('video');
+      document.getElementById('catcher').onclick = () => {
+        window.siteToggles++;
+        v.paused ? v.play() : v.pause();
+      };
+      document.getElementById('play').onclick = () => (v.paused ? v.play() : v.pause());
+      document.getElementById('fs').onclick = () =>
+        document.fullscreenElement
+          ? document.exitFullscreen()
+          : document.getElementById('player').requestFullscreen();
+    </script>
+  </body>
+</html>

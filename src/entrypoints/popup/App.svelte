@@ -86,7 +86,7 @@
         >
       </div>
     {:else}
-      <p class="muted">{t('popup.noVideo')}</p>
+      <p class="muted">{status?.closedPlayer ? t('popup.closedPlayer') : t('popup.noVideo')}</p>
     {/if}
 
     <p class="provider">

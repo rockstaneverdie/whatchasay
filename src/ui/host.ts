@@ -1,5 +1,6 @@
 import baseCss from './styles/base.css?inline';
 import tokensCss from './styles/tokens.css?inline';
+import { composedAncestors, composedContains, elementAtPoint, fullscreenElementFor } from '../utils/dom';
 
 const HOST_TAG = 'subtext-overlay';
 
@@ -76,11 +77,24 @@ export class OverlayHost {
     for (const [k, v] of Object.entries(props)) this.host.style.setProperty(k, v, 'important');
   }
 
-  /** The element the host should live in: the player container, or the fullscreen element. */
+  /** FR-V7: an ancestor the host was lifted to, so it sits above the player's own layers. */
+  private preferred: HTMLElement | null = null;
+
+  private container(): HTMLElement | null {
+    return this.preferred ?? this.video.parentElement;
+  }
+
+  /** The element the host should live in: the player container, or the fullscreen element (FR-V3, FR-V6). */
   private targetParent(): HTMLElement | null {
-    const container = this.video.parentElement;
-    const fs = document.fullscreenElement as HTMLElement | null;
-    if (fs && fs !== this.video && fs.contains(this.video) && container && !fs.contains(container)) {
+    const container = this.container();
+    const fs = fullscreenElementFor(this.video) as HTMLElement | null;
+    if (
+      fs &&
+      fs !== this.video &&
+      composedContains(fs, this.video) &&
+      container &&
+      !composedContains(fs, container)
+    ) {
       return fs;
     }
     return container;
@@ -123,9 +137,67 @@ export class OverlayHost {
     return { width: vr.width, height: vr.height };
   }
 
+  /**
+   * FR-V7: players often lay transparent click catchers or controls over the <video> in their own
+   * stacking context, which would cover a host that lives next to the video. Hit-test where our
+   * launcher and panel sit; if something else is on top, move the host up to the closest ancestor
+   * shared with that layer — but never beyond the player box (a page-wide modal must stay on top).
+   * Returns true when the host moved.
+   */
+  ensureOnTop(): boolean {
+    const vr = this.video.getBoundingClientRect();
+    if (vr.width < 50 || vr.height < 50 || this.videoItselfFullscreen) return false;
+    const points: [number, number][] = [
+      [vr.left + 30, vr.top + 30],
+      [vr.right - Math.min(60, vr.width * 0.1), vr.top + vr.height * 0.4],
+    ];
+    let moved = false;
+    this.setStyle({ 'pointer-events': 'auto' });
+    try {
+      for (let step = 0; step < 4; step++) {
+        let blocker: Element | null = null;
+        for (const [x, y] of points) {
+          const el = elementAtPoint(this.host, x, y);
+          if (el && el !== this.host && !composedContains(this.host, el)) {
+            blocker = el;
+            break;
+          }
+        }
+        const parent = this.host.parentElement;
+        if (!blocker || !parent) return moved;
+        const lca = [parent, ...composedAncestors(parent)].find((a) => composedContains(a, blocker));
+        if (!lca || lca === parent || lca === document.body || lca === document.documentElement) return moved;
+        const lr = lca.getBoundingClientRect();
+        if (lr.width > vr.width * 1.5 + 40 || lr.height > vr.height * 1.6 + 80) return moved;
+        this.preferred = lca as HTMLElement;
+        this.home = this.preferred;
+        this.preferred.appendChild(this.host);
+        this.position();
+        moved = true;
+      }
+      return moved;
+    } finally {
+      this.setStyle({ 'pointer-events': 'none' });
+    }
+  }
+
   /** Fullscreen on the bare <video> element hides everything else; nothing we can do there. */
   get videoItselfFullscreen(): boolean {
-    return document.fullscreenElement === this.video;
+    return fullscreenElementFor(this.video) === this.video;
+  }
+
+  get isFullscreen(): boolean {
+    const fs = fullscreenElementFor(this.video);
+    return !!fs && composedContains(fs, this.host);
+  }
+
+  /** FR-V10: our own fullscreen on the player container, so the subtitles come along. User gesture only. */
+  async toggleFullscreen(): Promise<void> {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    await this.container()?.requestFullscreen();
   }
 
   destroy(): void {

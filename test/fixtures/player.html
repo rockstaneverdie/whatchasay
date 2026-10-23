@@ -102,6 +102,9 @@
         <span id="time">0:00</span>
         <button id="next" hidden>Next episode</button>
         <button id="fs">Fullscreen</button>
+        <button id="fs-video">Video fullscreen</button>
+        <button id="next-blob" hidden>Next (blob)</button>
+        <button id="next-url" hidden>Next (URL only)</button>
       </div>
     </div>
     <div id="log"></div>
@@ -120,7 +123,8 @@
       let video;
       function bind(v) {
         video = v;
-        v.src = params.get('media') ?? 'media/tone.wav';
+        // blob mode sets its own source once (a site would not set a URL first).
+        if (!params.get('blob')) v.src = params.get('media') ?? 'media/tone.wav';
         if (params.get('track')) {
           const tr = document.createElement('track');
           tr.kind = 'subtitles';
@@ -169,6 +173,36 @@
       });
 
       // Like a player that fetches segmented captions and a TTML file by script (FR-S8).
+      // Fullscreen on the bare <video>, like a native-controls double-click (FR-V10).
+      document.getElementById('fs-video').onclick = () =>
+        document.fullscreenElement ? document.exitFullscreen() : video.requestFullscreen();
+
+      // FR-V9: blob: sources, and an episode switch that keeps the same element.
+      if (params.get('blob')) {
+        const toBlob = (u) =>
+          fetch(u)
+            .then((r) => r.blob())
+            .then((b) => URL.createObjectURL(b));
+        toBlob('media/tone.wav').then((u) => (video.src = u));
+        const next = document.getElementById('next-blob');
+        next.hidden = false;
+        next.onclick = () =>
+          toBlob('media/long.wav').then((u) => {
+            video.src = u;
+            log('site: same <video>, new blob source');
+          });
+      }
+
+      // FR-V9: SPA navigation that changes the URL but keeps the <video> and its source.
+      if (params.get('pushstate')) {
+        const next = document.getElementById('next-url');
+        next.hidden = false;
+        next.onclick = () => {
+          history.pushState({}, '', 'player-episode-4.html?pushstate=1');
+          log('site: URL changed, same <video>');
+        };
+      }
+
       if (params.get('sniff')) {
         Promise.all(
           ['subs/hls/seg-1.vtt', 'subs/hls/seg-2.vtt', 'subs/extra.ttml'].map((u) =>

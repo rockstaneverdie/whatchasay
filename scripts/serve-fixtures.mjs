@@ -44,11 +44,18 @@ export function serve(p = port) {
         'Content-Length': end - start + 1,
         'Content-Range': `bytes ${start}-${end}/${size}`,
         'Accept-Ranges': 'bytes',
+        // Live embed checks fetch fixtures from third-party frames.
+        'Access-Control-Allow-Origin': '*',
       });
       createReadStream(file, { start, end }).pipe(res);
       return;
     }
-    res.writeHead(200, { 'Content-Type': type, 'Content-Length': size, 'Accept-Ranges': 'bytes' });
+    res.writeHead(200, {
+      'Content-Type': type,
+      'Content-Length': size,
+      'Accept-Ranges': 'bytes',
+      'Access-Control-Allow-Origin': '*',
+    });
     createReadStream(file).pipe(res);
   });
   return new Promise((resolve) => server.listen(p, () => resolve(server)));

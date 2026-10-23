@@ -10,9 +10,10 @@ import { startMockAi } from './mock-ai.mjs';
 import { startMockOs } from './mock-opensubtitles.mjs';
 import { serve } from './serve-fixtures.mjs';
 import { liveScenarios } from './e2e-live.mjs';
+import { m4bScenarios } from './e2e-m4b.mjs';
 import { scenarios as localScenarios } from './e2e-scenarios.mjs';
 
-const scenarios = { ...localScenarios, ...liveScenarios };
+const scenarios = { ...localScenarios, ...m4bScenarios, ...liveScenarios };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = join(root, '.e2e');

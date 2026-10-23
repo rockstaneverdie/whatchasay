@@ -126,3 +126,35 @@ Three bugs found there and fixed, each with a local regression test:
 3. Tracks imported from page tracks, OpenSubtitles or page-loaded files were never saved to the library
    (`DataCloneError`: a Svelte state proxy in the message), so a reload lost them. `sendBg` now sends plain data;
    `m3-page-track-import` reloads and checks the restore.
+
+## D-017 Third-party and embedded players (M4b, FR-V5…V10)
+
+All of it stays generic: no host names, selectors or player-specific code.
+
+- **Early start (FR-V8).** The content script runs at `document_start` in every frame, so our capturing key listeners
+  are registered before a page's own; a site's window-level Space handler no longer wins
+  (`m4b-layered-player`).
+- **Hotkeys across frames (FR-V5).** Each frame reports `{hasVideo, hasTrack, cardOpen}` to the background
+  (`frames/state`, debounced, only on change). The registry is kept in `storage.session` so it survives the event page
+  going to sleep. A key pressed in a frame without a player is routed with the same pure `routeKey` and relayed
+  (`hotkey/relay`) to the best frame via `tabs.sendMessage` with `frameId` (card > track > video, lowest id on ties).
+  Keys typed into editable fields are never touched. The relay carries the key code and modifiers only.
+- **Shadow DOM (FR-V6).** Videos are searched through open shadow roots; ancestry and fullscreen checks use the
+  composed tree. Closed shadow roots are not entered: `openOrClosedShadowRoot` is used only to tell the popup that a
+  player exists that we cannot reach (`popup.closedPlayer`), never to mount into it.
+- **Layers above the video (FR-V7).** After attaching and every couple of seconds the host hit-tests two points (the
+  launcher and the panel area). If another layer covers them, the host moves up to the lowest common ancestor shared
+  with that layer, at most 4 steps, and never to `body`/`html` or to an element much larger than the video. Checked
+  with real WebDriver clicks over a full-size click catcher.
+- **Fullscreen (FR-V10).** Nothing can be drawn over a `<video>` that is itself fullscreen, so the menu offers "Full
+  screen with subtitles", which makes the player container fullscreen instead. When the user leaves fullscreen of the
+  bare video, a toast offers that mode once. A fullscreen element inside a shadow root is resolved through that root.
+- **New episode in the same element (FR-V9).** Signals: `src`/`currentSrc` change (blob URLs included), a pathname
+  change (SPA, polled every second), and a duration jump (> 5 %, previous duration stable ≥ 10 s, position ≤ 5 s,
+  new duration > 30 s). Title changes alone are ignored — sites rewrite titles constantly. If the source changed but
+  the media key did not (the same page URL), the track is cleared with a "new video" toast and is not restored from
+  the library, otherwise the previous episode's subtitles would come back.
+- **Live checks.** `pnpm e2e live` also opens a local page that embeds Big Buck Bunny (CC-BY) from Vimeo: overlay
+  mounted inside the cross-origin frame and lifted above the player's own UI, offset and Alt+L pressed on the parent page
+  reached the frame, the parent did not scroll. The srt is passed from Node because the provider's CSP blocks fetches to
+  localhost. The archive.org embed could not be checked: the connection is reset from this network.

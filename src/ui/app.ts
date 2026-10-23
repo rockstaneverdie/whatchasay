@@ -1,9 +1,17 @@
 import { mount, unmount } from 'svelte';
 import { CueIndex, subtitleTime } from '../core/player/clock';
-import { describeVideo } from '../core/player/find-video';
-import { isEditableTarget, matchHotkey } from '../core/player/hotkeys';
+import { describeVideo, hasClosedPlayer } from '../core/player/find-video';
+import { isEditableTarget } from '../core/player/hotkeys';
+import {
+  durationSuggestsNewMedia,
+  routeKey,
+  type KeyAction,
+  type KeyContext,
+  type PlayerState,
+  type RoutedKey,
+} from '../core/player/key-router';
 import { VideoWatcher } from '../core/player/video-watcher';
-import { sendBg, type TabRequest, type TabStatus } from '../core/messaging/types';
+import { sendBg, type RemotePlayer, type TabRequest, type TabStatus } from '../core/messaging/types';
 import { loadSettings, onSettingsChanged, saveSettings } from '../core/storage/settings';
 import type { SubtitleEncoding } from '../core/subtitles/decode';
 import { guessMediaInfo } from '../core/subtitles/media-info';
@@ -59,6 +67,14 @@ export class SubtextApp {
   private offsetSaveTimer: ReturnType<typeof setTimeout> | undefined;
   private swallowSpaceUp = false;
   private toastSeq = 0;
+  /** FR-V5: the frame of this tab that owns the video, when it is not this one. */
+  private remote: RemotePlayer | null = null;
+  private published = '';
+  private publishTimer: ReturnType<typeof setTimeout> | undefined;
+  private prevDuration = NaN;
+  private prevDurationAt = 0;
+  private lastPath = location.pathname;
+  private videoFullscreenSeen = false;
   /** Set by the explain client (M2). */
   explainHandler: ((target: ExplainTarget) => void) | null = null;
   cardActions: Partial<OverlayActions> = {};
@@ -68,6 +84,12 @@ export class SubtextApp {
   constructor(private readonly ctx: AppContext) {}
 
   async start(): Promise<void> {
+    // FR-V8: keyboard first and synchronously — this runs at document_start, before the page's
+    // scripts, so our capture listeners on window precede the player's.
+    this.listen(window, 'keydown', this.onKeyDown, true);
+    this.listen(window, 'keyup', this.onKeyUp, true);
+    this.listen(window, 'keypress', this.onKeyUp, true);
+
     try {
       this.state.settings = await loadSettings();
     } catch (e) {
@@ -85,14 +107,11 @@ export class SubtextApp {
     this.listen(motion, 'change', syncMedia);
     this.listen(dark, 'change', syncMedia);
 
-    this.listen(window, 'keydown', this.onKeyDown, true);
-    this.listen(window, 'keyup', this.onKeyUp, true);
-    this.listen(window, 'keypress', this.onKeyUp, true);
     this.listen(window, 'dragenter', this.onDragOver, true);
     this.listen(window, 'dragover', this.onDragOver, true);
     this.listen(window, 'drop', this.onDrop, true);
     this.listen(document, 'mousemove', this.onMouseMove, { capture: true, passive: true });
-    this.listen(document, 'fullscreenchange', this.reposition);
+    this.listen(document, 'fullscreenchange', this.onFullscreenChange);
     this.listen(window, 'resize', this.reposition);
 
     const onMessage = (msg: unknown) => this.onTabMessage(msg as TabRequest);
@@ -101,7 +120,64 @@ export class SubtextApp {
 
     this.watcher = new VideoWatcher(document, (ranked) => safe(() => this.onVideos(ranked)));
     this.ctx.onInvalidated(() => this.destroy());
+
+    // FR-V9: SPA navigation that keeps the same <video> shows up as a new path.
+    const pathPoll = setInterval(() => safe(this.checkPath), 1000);
+    this.globalCleanup.push(() => clearInterval(pathPoll));
+    // FR-V5: a frame without a video learns where the video is, to forward hotkeys.
+    void sendBg({ type: 'frames/get' })
+      .then((r) => {
+        if (!this.video) this.remote = r;
+      })
+      .catch(() => {});
+    this.listen(window, 'pagehide', () => {
+      if (!this.video) return;
+      void sendBg({
+        type: 'frames/state',
+        state: { hasVideo: false, hasTrack: false, cardOpen: false },
+      }).catch(() => {});
+    });
   }
+
+  private checkPath = () => {
+    if (location.pathname === this.lastPath) return;
+    this.lastPath = location.pathname;
+    if (this.video) setTimeout(() => void this.restoreForPage(), 300);
+  };
+
+  /** FR-V5: tells the background (and through it the other frames) what this frame's player is doing. */
+  publishState() {
+    clearTimeout(this.publishTimer);
+    this.publishTimer = setTimeout(() => {
+      const state: PlayerState = {
+        hasVideo: !!this.video,
+        hasTrack: !!this.state.track,
+        cardOpen: !!this.state.card,
+      };
+      const key = JSON.stringify(state);
+      if (key === this.published) return;
+      this.published = key;
+      void sendBg({ type: 'frames/state', state }).catch(() => {});
+    }, 30);
+  }
+
+  private onFullscreenChange = () => {
+    this.reposition();
+    if (!this.host) return;
+    // FR-V10: fullscreen on the bare <video> cannot show anything else; offer ours afterwards.
+    if (this.host.videoItselfFullscreen) {
+      this.videoFullscreenSeen = true;
+    } else if (!document.fullscreenElement && this.videoFullscreenSeen) {
+      this.videoFullscreenSeen = false;
+      if (this.state.track) {
+        this.toast(this.state.t('toast.videoFullscreen'), {
+          label: this.state.t('menu.fullscreen'),
+          run: () => this.actions.toggleFullscreen(),
+        });
+      }
+    }
+    setTimeout(() => safe(() => this.host?.ensureOnTop() && this.reposition()), 200);
+  };
 
   private listen(
     target: EventTarget,
@@ -174,6 +250,23 @@ export class SubtextApp {
     for (const t of ['seeking', 'seeked', 'timeupdate', 'ratechange', 'loadedmetadata'])
       on(t, this.updateClock);
     on('loadstart', () => this.onSourceChange());
+    this.prevDuration = video.duration;
+    this.prevDurationAt = Date.now();
+    on('durationchange', () => {
+      const now = Date.now();
+      if (
+        durationSuggestsNewMedia(
+          this.prevDuration,
+          video.duration,
+          video.currentTime,
+          now - this.prevDurationAt,
+        )
+      ) {
+        setTimeout(() => void this.restoreForPage(true), 300);
+      }
+      this.prevDuration = video.duration;
+      this.prevDurationAt = now;
+    });
     on('loadedmetadata', this.refreshPageTracks);
     const tt = video.textTracks;
     const onTracks = () => safe(this.refreshPageTracks);
@@ -189,8 +282,19 @@ export class SubtextApp {
     ro.observe(video);
     if (video.parentElement) ro.observe(video.parentElement);
     this.videoCleanup.push(() => ro.disconnect());
-    const interval = setInterval(() => safe(this.reposition), 1000);
+    let ticks = 0;
+    const interval = setInterval(
+      () =>
+        safe(() => {
+          this.reposition();
+          // FR-V7: players add their layers late; re-check every other second.
+          if (++ticks % 2 === 0 && this.host?.ensureOnTop()) this.reposition();
+        }),
+      1000,
+    );
     this.videoCleanup.push(() => clearInterval(interval));
+    const lift = setTimeout(() => safe(() => this.host?.ensureOnTop() && this.reposition()), 150);
+    this.videoCleanup.push(() => clearTimeout(lift));
 
     this.lastSrc = video.currentSrc || video.src;
     this.state.playing = !video.paused;
@@ -199,6 +303,8 @@ export class SubtextApp {
     // Titles of SPA pages often settle a moment after the player swaps.
     const t = setTimeout(() => void this.restoreForPage(), 300);
     this.videoCleanup.push(() => clearTimeout(t));
+    this.remote = null;
+    this.publishState();
   }
 
   private detachVideo() {
@@ -209,7 +315,9 @@ export class SubtextApp {
     this.component = null;
     this.host?.destroy();
     this.host = null;
+    const had = this.video !== null;
     this.video = null;
+    if (had) this.publishState();
   }
 
   /** FR-V2: a new source in the same element means a new episode. */
@@ -262,8 +370,20 @@ export class SubtextApp {
     const key = await this.computeMediaKey();
     if (key === this.mediaKey && this.state.track && !sourceChanged) return;
     const hadTrack = this.state.track !== null;
+    const sameKey = key === this.mediaKey;
     this.mediaKey = key;
     this.clearTrack();
+    // FR-V9: a new source under the same page key (playlists, same-URL players) is another video;
+    // the library entry for this key belongs to the previous one, so do not restore it.
+    if (sourceChanged && sameKey) {
+      if (hadTrack) {
+        this.toast(this.state.t('toast.newVideo'), {
+          label: this.state.t('panel.choose'),
+          run: () => this.actions.pickFile(),
+        });
+      }
+      return;
+    }
     const found = await sendBg({ type: 'library/get', mediaKey: key }).catch((e) => {
       log.warn('library lookup failed', e);
       return null;
@@ -293,6 +413,7 @@ export class SubtextApp {
     this.state.focus = -1;
     this.state.active = [];
     this.updateClock();
+    this.publishState();
   }
 
   private clearTrack() {
@@ -303,6 +424,7 @@ export class SubtextApp {
     this.state.focus = -1;
     this.state.offsetMs = 0;
     this.state.mediaInfo = {};
+    this.publishState();
   }
 
   private async loadBytes(name: string, bytes: Uint8Array, encoding?: SubtitleEncoding) {
@@ -364,58 +486,77 @@ export class SubtextApp {
 
   // ---------------------------------------------------------------- input
 
+  private localKeyContext(editable: boolean): KeyContext {
+    return {
+      hasVideo: !!this.video,
+      hasTrack: !!this.state.track,
+      cardOpen: !!this.state.card,
+      dialogOpen: this.state.searchOpen || this.state.mediaFormOpen || this.state.menuOpen,
+      editable,
+      hotkeys: this.state.settings.hotkeys,
+    };
+  }
+
+  /**
+   * FR-I4, FR-V5, FR-V8: keys are routed the same way whether the video is in this frame or in
+   * another frame of the tab; in the latter case the key is forwarded through the background.
+   */
   private onKeyDown = (e: KeyboardEvent) => {
-    if (!this.video || e.isComposing) return;
+    if (e.isComposing) return;
     const editable = isEditableTarget(e);
-    const plain = !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey;
-    // Esc closes our dialogs and the menu wherever the focus is (the card has its own rule below).
-    if (
-      e.code === 'Escape' &&
-      !this.state.card &&
-      (this.state.searchOpen || this.state.mediaFormOpen || this.state.menuOpen)
-    ) {
-      swallow(e);
-      this.state.searchOpen = false;
-      this.state.mediaFormOpen = false;
-      this.state.menuOpen = false;
+    const local = !!this.video;
+    const remote = this.remote;
+    let ctx: KeyContext;
+    if (local) ctx = this.localKeyContext(editable);
+    else if (remote) ctx = { ...remote, dialogOpen: false, editable, hotkeys: this.state.settings.hotkeys };
+    else return;
+    const routed = routeKey(e, ctx);
+    if (!routed) return;
+    if (routed.swallow) swallow(e);
+    if (routed.action?.kind === 'card-resume') this.swallowSpaceUp = true;
+    if (!routed.action) return;
+    if (local) {
+      this.perform(routed.action);
       return;
     }
-    if (this.state.card && !editable) {
-      // FR-I4: Space closes the card and resumes; the site's player must not see it.
-      if (e.code === 'Space' && plain) {
-        swallow(e);
-        this.swallowSpaceUp = true;
-        this.actions.closeCard(true);
-        return;
-      }
-      if (e.code === 'Escape') {
-        swallow(e);
-        this.actions.closeCard(false);
-        return;
-      }
-    }
-    if (editable) return;
-    const hk = this.state.settings.hotkeys;
-    if (matchHotkey(e, hk.togglePanel)) {
-      swallow(e);
-      this.actions.togglePanel();
-      return;
-    }
-    if (!this.state.track) return;
-    if (matchHotkey(e, hk.explain)) {
-      swallow(e);
-      if (!e.repeat) this.explainCurrent();
-    } else if (matchHotkey(e, hk.repeat)) {
-      swallow(e);
-      if (!e.repeat) this.actions.repeatCue(this.state.focus);
-    } else if (matchHotkey(e, hk.offsetBack, true)) {
-      swallow(e);
-      this.actions.nudgeOffset(e.shiftKey ? -1000 : -100);
-    } else if (matchHotkey(e, hk.offsetForward, true)) {
-      swallow(e);
-      this.actions.nudgeOffset(e.shiftKey ? 1000 : 100);
-    }
+    const key: RoutedKey = {
+      code: e.code,
+      altKey: e.altKey,
+      ctrlKey: e.ctrlKey,
+      shiftKey: e.shiftKey,
+      metaKey: e.metaKey,
+      repeat: e.repeat,
+    };
+    void sendBg({ type: 'hotkey/relay', key }).catch(() => {});
   };
+
+  private perform(a: KeyAction) {
+    switch (a.kind) {
+      case 'close-dialogs':
+        this.state.searchOpen = false;
+        this.state.mediaFormOpen = false;
+        this.state.menuOpen = false;
+        break;
+      case 'card-resume':
+        this.actions.closeCard(true);
+        break;
+      case 'card-close':
+        this.actions.closeCard(false);
+        break;
+      case 'toggle-panel':
+        this.actions.togglePanel();
+        break;
+      case 'explain':
+        this.explainCurrent();
+        break;
+      case 'repeat':
+        this.actions.repeatCue(this.state.focus);
+        break;
+      case 'offset':
+        this.actions.nudgeOffset(a.deltaMs);
+        break;
+    }
+  }
 
   private onKeyUp = (e: KeyboardEvent) => {
     if (this.swallowSpaceUp && e.code === 'Space') {
@@ -461,7 +602,23 @@ export class SubtextApp {
   };
 
   private onTabMessage(msg: TabRequest): Promise<unknown> | undefined {
-    if (!this.video) return undefined;
+    if (msg?.type === 'ui/remote-state') {
+      if (!this.video) this.remote = msg.state;
+      return undefined;
+    }
+    if (!this.video) {
+      // FR-V6: say why nothing shows when a player locks its video in a closed shadow root.
+      if (msg?.type === 'ui/status' && hasClosedPlayer(document)) {
+        const closed: TabStatus = { hasVideo: false, closedPlayer: true, panelVisible: false };
+        return Promise.resolve(closed);
+      }
+      return undefined;
+    }
+    if (msg?.type === 'ui/hotkey') {
+      const routed = routeKey(msg.key, this.localKeyContext(false));
+      if (routed?.action) this.perform(routed.action);
+      return Promise.resolve(true);
+    }
     const status = (): TabStatus => ({
       hasVideo: true,
       ...(this.state.track ? { trackLabel: this.state.track.label, cues: this.state.track.cues.length } : {}),
@@ -577,6 +734,10 @@ export class SubtextApp {
       }, 500);
     },
     openSettings: () => void sendBg({ type: 'open-options', section: 'settings' }),
+    toggleFullscreen: () => {
+      this.state.menuOpen = false;
+      void this.host?.toggleFullscreen().catch((e) => log.warn('fullscreen refused', e));
+    },
     dismissToast: () => {
       clearTimeout(this.toastTimer);
       this.state.toast = null;

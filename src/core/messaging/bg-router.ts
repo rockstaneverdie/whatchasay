@@ -8,10 +8,29 @@ import { osDownload, osLogin, osLogout, osSearch, osStatus } from '../sources/se
 import { sniffer } from '../sources/sniffer';
 import { loadSecrets } from '../storage/secrets';
 import { loadSettings } from '../storage/settings';
+import { FrameRegistry } from './frames';
 import type { BgRequest, BgResponse, BgResponses, Wire } from './types';
+
+export const frames = new FrameRegistry();
+
+// MV3 event pages are unloaded when idle; the registry survives in storage.session.
+let framesLoaded: Promise<void> | null = null;
+const framesReady = () =>
+  (framesLoaded ??= (browser.storage.session?.get('frames') ?? Promise.resolve({} as Record<string, unknown>))
+    .then((r) => frames.restore(r.frames))
+    .catch(() => {}));
+export const saveFrames = () => void browser.storage.session?.set({ frames: frames.dump() }).catch(() => {});
 
 export interface Sender {
   tab?: { id?: number };
+  frameId?: number;
+}
+
+/** Tells every frame of the tab where the active video is, so they can route hotkeys (FR-V5). */
+function broadcastPlayer(tabId: number) {
+  void browser.tabs
+    .sendMessage(tabId, { type: 'ui/remote-state', state: frames.best(tabId) })
+    .catch(() => {});
 }
 
 type Handlers = {
@@ -75,6 +94,35 @@ export const handlers: Handlers = {
     active: sniffer.active,
     groups: sender.tab?.id !== undefined ? sniffer.store.list(sender.tab.id) : [],
   }),
+  'frames/state': async (m, sender) => {
+    const tabId = sender.tab?.id;
+    if (tabId === undefined || sender.frameId === undefined) return null;
+    await framesReady();
+    frames.update(tabId, sender.frameId, m.state);
+    saveFrames();
+    broadcastPlayer(tabId);
+    return null;
+  },
+  'frames/get': async (_m, sender) => {
+    await framesReady();
+    return sender.tab?.id !== undefined ? frames.best(sender.tab.id) : null;
+  },
+  'hotkey/relay': async (m, sender) => {
+    await framesReady();
+    const tabId = sender.tab?.id;
+    const target = tabId !== undefined ? frames.best(tabId) : null;
+    if (tabId === undefined || !target || target.frameId === sender.frameId) return { delivered: false };
+    try {
+      await browser.tabs.sendMessage(tabId, { type: 'ui/hotkey', key: m.key }, { frameId: target.frameId });
+      return { delivered: true };
+    } catch {
+      // The frame went away (navigation); forget it and tell the others.
+      frames.forget(tabId, target.frameId);
+      saveFrames();
+      broadcastPlayer(tabId);
+      return { delivered: false };
+    }
+  },
   'sniff/fetch': async (m, sender) => {
     const tabId = sender.tab?.id;
     const group = tabId !== undefined ? sniffer.store.list(tabId).find((g) => g.key === m.key) : undefined;

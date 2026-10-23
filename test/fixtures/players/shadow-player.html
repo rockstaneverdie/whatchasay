@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Maple Street S01E03 – Web component player</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        font:
+          14px system-ui,
+          sans-serif;
+        background: #e9eef4;
+      }
+    </style>
+  </head>
+  <body>
+    <p>A web-component player: its &lt;video&gt; lives in an open shadow root, added after load (FR-V6).</p>
+    <div id="slot"></div>
+    <script>
+      class FancyPlayer extends HTMLElement {
+        connectedCallback() {
+          const root = this.attachShadow({ mode: 'open' });
+          root.innerHTML = `
+            <style>
+              .player { position: relative; width: 880px; height: 495px; background: radial-gradient(circle at 30% 30%, #456, #111); }
+              video { position: absolute; inset: 0; width: 100%; height: 100%; }
+              .bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px; display: flex; gap: 8px; }
+            </style>
+            <div class="player" id="wc-player">
+              <video src="../media/tone.wav" preload="auto"></video>
+              <div class="bar"><button id="wc-play">Play</button><button id="wc-fs">Fullscreen</button></div>
+            </div>`;
+          const video = root.querySelector('video');
+          root.getElementById('wc-play').onclick = () => (video.paused ? video.play() : video.pause());
+          root.getElementById('wc-fs').onclick = () =>
+            root.fullscreenElement
+              ? document.exitFullscreen()
+              : root.getElementById('wc-player').requestFullscreen();
+        }
+      }
+      customElements.define('fancy-player', FancyPlayer);
+      // Inserted a moment after load, like players that hydrate late.
+      setTimeout(() => document.getElementById('slot').append(document.createElement('fancy-player')), 400);
+    </script>
+  </body>
+</html>

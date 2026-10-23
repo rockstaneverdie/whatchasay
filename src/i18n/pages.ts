@@ -93,6 +93,8 @@ const ru = {
   'opt.phrases.empty': 'Здесь появятся фразы, которые вы сохраните из карточки (★).',
   'opt.phrases.delete': 'Удалить',
   'popup.noVideo': 'На этой странице нет подходящего видео.',
+  'popup.closedPlayer':
+    'Плеер на этой странице закрыт от расширений (закрытый shadow DOM) — показать субтитры поверх него нельзя.',
   'popup.noAccess': 'Нет доступа к страницам — разрешите расширению работать на сайтах.',
   'popup.grant': 'Разрешить',
   'popup.track': 'Субтитры: {label} ({n})',
@@ -201,6 +203,8 @@ const en: Record<Key, string> = {
   'opt.phrases.empty': 'Phrases you save from a card (★) show up here.',
   'opt.phrases.delete': 'Delete',
   'popup.noVideo': 'No suitable video on this page.',
+  'popup.closedPlayer':
+    'The player on this page is closed to extensions (closed shadow DOM), so subtitles cannot be shown over it.',
   'popup.noAccess': 'No access to pages — allow the extension to run on websites.',
   'popup.grant': 'Allow',
   'popup.track': 'Subtitles: {label} ({n})',

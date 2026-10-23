@@ -1,4 +1,5 @@
 import type { ExplainMode, ExplainRequest, ExplainResult, ModelInfo, ProviderErrorCode } from '../ai/types';
+import type { PlayerState, RoutedKey } from '../player/key-router';
 import type { OsDownload, OsResult, OsSearchParams } from '../sources/opensubtitles';
 import type { SniffedSummary } from '../sources/sniff';
 import type { CachedExplanation, LibraryEntry, SavedPhrase } from '../storage/idb';
@@ -26,7 +27,13 @@ export type BgRequest =
   | { type: 'os/login'; username: string; password: string }
   | { type: 'os/logout' }
   | { type: 'sniff/list' }
-  | { type: 'sniff/fetch'; key: string };
+  | { type: 'sniff/fetch'; key: string }
+  | { type: 'frames/state'; state: PlayerState }
+  | { type: 'frames/get' }
+  | { type: 'hotkey/relay'; key: RoutedKey };
+
+/** The frame of a tab that owns the active video, as other frames see it (FR-V5). */
+export type RemotePlayer = PlayerState & { frameId: number };
 
 /** Errors of source calls come back as data (codes match the AI provider errors). */
 export type SourceFailure = {
@@ -60,6 +67,9 @@ export interface BgResponses {
   /** Subtitle files the page of the sender's tab loaded (FR-S8); `active` is false without the permission. */
   'sniff/list': { active: boolean; groups: SniffedSummary[] };
   'sniff/fetch': { ok: true; parts: string[]; failed: number; format: SubtitleFormat } | SourceFailure;
+  'frames/state': null;
+  'frames/get': RemotePlayer | null;
+  'hotkey/relay': { delivered: boolean };
 }
 
 export type BgResponse<T extends BgRequest> = BgResponses[T['type']];
@@ -106,13 +116,19 @@ export type ExplainServerMsg =
 export type TabRequest =
   | { type: 'ui/status' }
   | { type: 'ui/toggle-panel' }
-  | { type: 'ui/load-file'; name: string; bytes: number[] };
+  | { type: 'ui/load-file'; name: string; bytes: number[] }
+  /** FR-V5: a hotkey pressed while the focus was in another frame of the tab. */
+  | { type: 'ui/hotkey'; key: RoutedKey }
+  /** FR-V5: broadcast to every frame when the frame with the video changes state. */
+  | { type: 'ui/remote-state'; state: RemotePlayer | null };
 
 export interface TabStatus {
   hasVideo: boolean;
   trackLabel?: string;
   cues?: number;
   panelVisible: boolean;
+  /** FR-V6: a player hides its <video> in a closed shadow root, so nothing can be shown. */
+  closedPlayer?: boolean;
 }
 
 export type { ExplainMode };

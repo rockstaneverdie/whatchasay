@@ -896,4 +896,16 @@ async function waitDialog(ctx, fn, what) {
   );
 }
 
-export { probe, waitFor, shadowFind, shadowFindAll, waitCard, openMenu, clickMenuButton, httpJson };
+export {
+  probe,
+  waitFor,
+  shadowFind,
+  shadowFindAll,
+  waitCard,
+  openMenu,
+  clickMenuButton,
+  httpJson,
+  dropFixture,
+  e2eCall,
+  setModel,
+};

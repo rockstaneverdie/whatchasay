@@ -2,6 +2,7 @@
 // so `scripts/e2e.mjs` runs them only when asked: `pnpm e2e live`.
 // Sintel (Blender Foundation) is CC-BY; Wikimedia Commons plays it with video.js and community subtitles.
 // The AI answers come from the local mock (scripts/mock-ai.mjs); nothing is sent to a real provider.
+import { readFileSync } from 'node:fs';
 import { Key } from 'selenium-webdriver';
 import {
   clickMenuButton,
@@ -233,4 +234,90 @@ export const liveScenarios = {
     void shadowFindAll;
     return out;
   },
+
+  'live-embed-vimeo': (ctx) => liveEmbed(ctx, 'vimeo'),
+  'live-embed-archive': (ctx) => liveEmbed(ctx, 'archive'),
 };
+
+/**
+ * M4b on real third-party players in a cross-origin <iframe> (Big Buck Bunny, CC-BY): the overlay
+ * mounts inside the provider's frame and hotkeys pressed in the embedding page reach it (FR-V5).
+ * The subtitles are our invented sample file; only the mechanics are checked.
+ */
+async function liveEmbed(ctx, which) {
+  const { driver, By } = ctx;
+  const out = { embed: which };
+  await driver.get(`${ctx.base}/players/live-embed.html?embed=${which}`);
+  const frame = await driver.findElement(By.id('embed'));
+  await driver.switchTo().frame(frame);
+  const found = async (ms) =>
+    driver
+      .wait(async () => driver.executeScript(`return !!document.querySelector('${HOST}')`), ms)
+      .then(() => true)
+      .catch(() => false);
+  if (!(await found(15000))) {
+    // Some players create the <video> only after the first click on the poster.
+    await driver.switchTo().defaultContent();
+    await frame.click();
+    await driver.switchTo().frame(frame);
+    if (!(await found(20000))) {
+      out.page = await driver.executeScript(DESCRIBE_PAGE);
+      await driver.switchTo().defaultContent();
+      await ctx.shot(`live-${which}-no-overlay`);
+      throw new Error(`no overlay in the ${which} frame: ${JSON.stringify(out.page).slice(0, 500)}`);
+    }
+  }
+  out.page = await driver.executeScript(DESCRIBE_PAGE);
+  // Providers' CSP blocks fetches to localhost from their frame, so the file text comes from here.
+  const srt = readFileSync(`${ctx.root}/test/fixtures/sample.srt`, 'utf8');
+  const dropped = await driver.executeScript(
+    `
+    const host = document.querySelector('${HOST}');
+    const v = [...host.parentElement.querySelectorAll('video')][0] || document.querySelector('video');
+    const r = v.getBoundingClientRect();
+    const dt = new DataTransfer();
+    dt.items.add(new File([arguments[0]], 'sample.srt'));
+    const o = { dataTransfer: dt, clientX: r.left + r.width / 3, clientY: r.top + r.height / 2, bubbles: true, cancelable: true };
+    v.dispatchEvent(new DragEvent('dragover', o));
+    return !v.dispatchEvent(new DragEvent('drop', o));
+  `,
+    srt,
+  );
+  if (dropped !== true) throw new Error(`drop in the ${which} frame: ${dropped}`);
+  const loaded = await waitFor(
+    ctx,
+    (p) => p.toast && p.toast.includes('Загружено'),
+    'subtitles loaded in the frame',
+    8000,
+  );
+  out.loaded = loaded.toast;
+  out.liftedTo = await driver.executeScript(
+    `const h = document.querySelector('${HOST}'); return h.parentElement ? (h.parentElement.id || h.parentElement.className || h.parentElement.tagName).toString().slice(0, 60) : null`,
+  );
+
+  // Hotkeys from the embedding page (focus outside the frame).
+  await driver.switchTo().defaultContent();
+  await driver.findElement(By.id('outside')).click();
+  await ctx.sleep(400);
+  await driver.actions().sendKeys(']').perform();
+  await driver.switchTo().frame(frame);
+  const offset = await waitFor(
+    ctx,
+    (p) => p.toast && p.toast.includes('+0.1'),
+    'offset hotkey from the parent page',
+    5000,
+  );
+  out.offsetFromParent = offset.toast;
+  await driver.switchTo().defaultContent();
+  await driver.actions().keyDown(Key.ALT).sendKeys('l').keyUp(Key.ALT).perform();
+  await driver.switchTo().frame(frame);
+  const hidden = await waitFor(ctx, (p) => !p.panel && !p.compact, 'Alt+L from the parent page', 5000);
+  out.altL = { panelHidden: !hidden.panel };
+  await driver.switchTo().defaultContent();
+  await driver.actions().keyDown(Key.ALT).sendKeys('l').keyUp(Key.ALT).perform();
+  const scrollY = await driver.executeScript('return window.scrollY');
+  await ctx.sleep(500);
+  await ctx.shot(`live-${which}`);
+  out.parentScrollY = scrollY;
+  return out;
+}

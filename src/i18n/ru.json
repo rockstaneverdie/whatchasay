@@ -103,5 +103,7 @@
   "os.error.network": "Нет связи с OpenSubtitles.",
   "os.error.server": "Ошибка на стороне OpenSubtitles.",
   "os.error.bad-response": "OpenSubtitles ответил неожиданно.",
-  "os.error.unknown": "Не получилось"
+  "os.error.unknown": "Не получилось",
+  "menu.fullscreen": "Полный экран с субтитрами",
+  "toast.videoFullscreen": "В полноэкранном режиме самого видео субтитры не видны"
 }

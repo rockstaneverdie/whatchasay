@@ -7,7 +7,9 @@ import { log } from '../utils/log';
 export default defineContentScript({
   matches: ['<all_urls>'],
   allFrames: true,
-  runAt: 'document_idle',
+  // FR-V8: as early as possible, so our keyboard listeners precede the page's. The UI itself is
+  // still created only when a suitable <video> exists.
+  runAt: 'document_start',
   // Styles are injected by Svelte into our own shadow root (see svelte.config.js).
   cssInjectionMode: 'manual',
 

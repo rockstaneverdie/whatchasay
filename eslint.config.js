@@ -39,6 +39,11 @@ export default ts.config(
     },
   },
   {
+    // Tests build their own DOM fixtures; NFR-4 is about product code rendering outside data.
+    files: ['test/**'],
+    rules: { 'no-restricted-properties': 'off' },
+  },
+  {
     // Auto-imported by WXT.
     languageOptions: {
       globals: {

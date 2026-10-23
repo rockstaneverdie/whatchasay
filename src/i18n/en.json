@@ -103,5 +103,7 @@
   "os.error.network": "Can't reach OpenSubtitles.",
   "os.error.server": "OpenSubtitles had an error.",
   "os.error.bad-response": "OpenSubtitles answered unexpectedly.",
-  "os.error.unknown": "Something went wrong"
+  "os.error.unknown": "Something went wrong",
+  "menu.fullscreen": "Fullscreen with subtitles",
+  "toast.videoFullscreen": "The video's own fullscreen hides the subtitles"
 }

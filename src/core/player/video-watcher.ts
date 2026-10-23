@@ -1,8 +1,9 @@
 import { findVideos, rankVideos } from './find-video';
 
 /**
- * FR-V1/V2: keeps a ranked list of eligible videos up to date while the site
- * adds, removes or swaps <video> elements (SPA navigation).
+ * FR-V1/V2/V6: keeps a ranked list of eligible videos up to date while the site adds, removes or
+ * swaps <video> elements (SPA navigation), including inside open shadow roots, which a
+ * document-level MutationObserver and media-event listener cannot see into.
  */
 export class VideoWatcher {
   private observer: MutationObserver;
@@ -11,6 +12,7 @@ export class VideoWatcher {
   private last: HTMLVideoElement[] = [];
   /** A play event must reach onChange even when the ranking did not change (see check). */
   private forceNext = false;
+  private readonly watchedRoots = new Set<Document | ShadowRoot>();
 
   constructor(
     private readonly doc: Document,
@@ -19,18 +21,29 @@ export class VideoWatcher {
     this.observer = new MutationObserver((records) => {
       const touchesVideo = records.some((r) =>
         [...r.addedNodes, ...r.removedNodes].some(
-          (n) => n.nodeName === 'VIDEO' || (n instanceof Element && n.querySelector('video')),
+          (n) =>
+            n.nodeName === 'VIDEO' ||
+            (n instanceof Element &&
+              (!!n.querySelector('video') || !!n.shadowRoot || n.tagName.includes('-'))),
         ),
       );
       if (touchesVideo) this.schedule(50);
     });
-    this.observer.observe(doc.documentElement, { childList: true, subtree: true });
-    // A video that starts playing may become the best candidate (media events don't bubble).
-    doc.addEventListener('play', this.onPlay, true);
-    doc.addEventListener('loadedmetadata', this.onPlay, true);
-    // Layout changes (a player growing from a thumbnail) have no event of their own.
+    this.watch(doc);
+    // Layout changes (a player growing from a thumbnail) and late shadow roots have no event of their own.
     this.interval = setInterval(() => this.schedule(0), 2000);
     this.schedule(0);
+  }
+
+  private watch(root: Document | ShadowRoot) {
+    if (this.watchedRoots.has(root)) return;
+    this.watchedRoots.add(root);
+    const target = root instanceof Document ? root.documentElement : root;
+    if (target) this.observer.observe(target, { childList: true, subtree: true });
+    // A video that starts playing may become the best candidate. Media events neither bubble nor
+    // leave a shadow tree, so each root gets its own capturing listener.
+    root.addEventListener('play', this.onPlay, true);
+    root.addEventListener('loadedmetadata', this.onPlay, true);
   }
 
   private onPlay = (e: Event) => {
@@ -50,7 +63,9 @@ export class VideoWatcher {
   }
 
   check(): void {
-    const ranked = rankVideos(findVideos(this.doc));
+    const roots: ShadowRoot[] = [];
+    const ranked = rankVideos(findVideos(this.doc, roots));
+    for (const r of roots) this.watch(r);
     const same = ranked.length === this.last.length && ranked.every((v, i) => v === this.last[i]);
     const force = this.forceNext;
     this.forceNext = false;
@@ -67,7 +82,10 @@ export class VideoWatcher {
     this.observer.disconnect();
     clearInterval(this.interval);
     clearTimeout(this.timer);
-    this.doc.removeEventListener('play', this.onPlay, true);
-    this.doc.removeEventListener('loadedmetadata', this.onPlay, true);
+    for (const root of this.watchedRoots) {
+      root.removeEventListener('play', this.onPlay, true);
+      root.removeEventListener('loadedmetadata', this.onPlay, true);
+    }
+    this.watchedRoots.clear();
   }
 }
