@@ -35,7 +35,7 @@ Spec: [docs/TZ.md](docs/TZ.md) · decisions: [docs/decisions.md](docs/decisions.
 1. `pnpm install && pnpm build && pnpm fixtures:media`
 2. In one terminal `pnpm fixtures`, in another `pnpm web-ext:run`.
 3. On the fixture player drop `test/fixtures/sample.srt` (or `.vtt`) onto the video.
-4. Settings (toolbar icon → Settings, or the **S** button on the video → Settings): paste a Gemini key
+4. Settings (toolbar icon → Settings, or the logo button on the video → Settings): paste a Gemini key
    (free at aistudio.google.com → Get API key), press **Check**.
 5. Click a word in the panel. Space continues, Esc closes.
 

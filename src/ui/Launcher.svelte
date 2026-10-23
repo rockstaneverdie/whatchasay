@@ -4,6 +4,7 @@
   import { trackTitle } from '../core/player/page-tracks';
   import type { OverlayActions } from './actions';
   import type { OverlayState } from './state.svelte';
+  import Mark from './brand/Mark.svelte';
 
   interface Props {
     ui: OverlayState;
@@ -46,7 +47,7 @@
     aria-haspopup="menu"
     aria-expanded={ui.menuOpen}
     title={ui.t('launcher.title')}
-    onclick={toggleMenu}>S</button
+    onclick={toggleMenu}><Mark /></button
   >
 
   {#if ui.menuOpen}
@@ -174,14 +175,20 @@
   }
 
   .fab {
+    display: grid;
+    place-items: center;
     width: 38px;
     height: 38px;
+    padding: 0;
     border: 1px solid var(--hairline);
     border-radius: 50%;
-    font-weight: 800;
-    font-size: 17px;
     cursor: pointer;
     box-shadow: var(--shadow);
+  }
+
+  .fab :global(svg) {
+    width: 26px;
+    height: 26px;
   }
 
   .menu {
