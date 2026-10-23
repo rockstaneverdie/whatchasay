@@ -7,6 +7,8 @@ import { log } from '../utils/log';
 export default defineContentScript({
   matches: ['<all_urls>'],
   allFrames: true,
+  // Players built by script inside an iframe without a URL (about:blank, about:srcdoc) count too.
+  matchAboutBlank: true,
   // FR-V8: as early as possible, so our keyboard listeners precede the page's. The UI itself is
   // still created only when a suitable <video> exists.
   runAt: 'document_start',

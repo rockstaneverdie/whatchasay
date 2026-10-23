@@ -3,6 +3,7 @@ import type { ExplainMode } from '../core/ai/types';
 import { EXPLAIN_PORT, sendBg, type ExplainClientMsg, type ExplainServerMsg } from '../core/messaging/types';
 import { formatMediaInfo } from '../core/subtitles/media-info';
 import { log, safe } from '../utils/log';
+import { pageTitle } from '../utils/page';
 import type { SubtextApp } from './app';
 import type { ExplainTarget } from './state.svelte';
 
@@ -207,7 +208,7 @@ export class ExplainClient {
         cueText: cue.text,
         explanation: card.text,
         type: card.type ?? 'other',
-        show: formatMediaInfo(this.state.mediaInfo) || document.title,
+        show: formatMediaInfo(this.state.mediaInfo) || pageTitle(),
         time: cue.start,
       },
     });

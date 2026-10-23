@@ -255,4 +255,169 @@ export const m4bScenarios = {
     if (!ours.fullscreen || !ours.panel) throw new Error(`own fullscreen: ${JSON.stringify(ours)}`);
     return { hint: hint.toast, ownFullscreen: { panel: ours.panel, rect: ours.rect } };
   },
+  async 'm4b-custom-tag-player'(ctx) {
+    const { driver, By } = ctx;
+    await setModel(ctx, 'ok');
+    await e2eCall(ctx, 'settings', { panel: { compact: 'off' } });
+    await driver.get(`${ctx.base}/players/custom-tag-player.html`);
+    // preload="none" on a blob: source: no metadata yet, but the box is a player (FR-V1).
+    await hostIn(ctx);
+    const before = await driver.executeScript(
+      `const v = document.querySelector('video'); return { readyState: v.readyState, blob: v.src.startsWith('blob:'), duration: String(v.duration) }`,
+    );
+    // FR-V7: the catcher and the empty frame lie over the picture; our launcher and panel spots must
+    // hit the overlay, wherever it ended up (WebDriver clicks below also refuse obscured elements).
+    await ctx.sleep(600);
+    const onTop = await driver.executeScript(`
+      const host = document.querySelector('${HOST}');
+      const r = document.querySelector('video').getBoundingClientRect();
+      const hit = (x, y) => document.elementFromPoint(x, y) === host;
+      host.style.setProperty('pointer-events', 'auto', 'important');
+      const out = {
+        parent: host.parentElement.id || host.parentElement.tagName.toLowerCase(),
+        launcher: hit(r.left + 30, r.top + 30),
+        panel: hit(r.right - 60, r.top + r.height * 0.4),
+      };
+      host.style.setProperty('pointer-events', 'none', 'important');
+      return out;
+    `);
+    if ((await dropFixture(ctx, '/sample.srt', 'Maple.Street.S01E03.srt')) !== true)
+      throw new Error('drop failed');
+    await waitFor(ctx, (q) => q.lines === 29, 'panel');
+
+    // Started through the site's own catcher, then paused.
+    await driver.findElement(By.id('pjs-catcher')).click();
+    await driver.wait(
+      async () => driver.executeScript(`return !document.querySelector('video').paused`),
+      4000,
+      'site play',
+    );
+    const playing = await driver.executeScript(
+      `const v = document.querySelector('video'); v.pause(); v.currentTime = 14.4; return { readyState: v.readyState, duration: Math.round(v.duration) }`,
+    );
+    await ctx.sleep(400);
+    const keysBefore = await driver.executeScript('return window.siteKeys');
+
+    // The site's own keys still work when we have nothing to do with them.
+    await driver.findElement(By.id('outside')).click();
+    await driver.actions().sendKeys(Key.ARROW_RIGHT).perform();
+    await ctx.sleep(300);
+    const seek = await driver.executeScript(
+      `return { keys: window.siteKeys, t: Math.round(document.querySelector('video').currentTime) }`,
+    );
+    await driver.executeScript(`document.querySelector('video').currentTime = 14.4`);
+    await ctx.sleep(300);
+
+    // Ours: offset, card, Space that resumes without reaching the site's document handler.
+    await driver.actions().sendKeys(']').perform();
+    const offset = await waitFor(ctx, (q) => q.toast && q.toast.includes('+0.1'), 'offset toast');
+    await openMenu(ctx);
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    const togglesBefore = await driver.executeScript('return window.siteToggles');
+    await (await shadowFind(ctx, '.panel .line.active .w')).click();
+    await waitCard(ctx, (c) => c.status === 'done', 'card', 8000);
+    await driver.actions().sendKeys(Key.SPACE).perform();
+    await ctx.sleep(500);
+    const afterSpace = await driver.executeScript(
+      `return { paused: document.querySelector('video').paused, keys: window.siteKeys, toggles: window.siteToggles, card: !!document.querySelector('${HOST}').shadowRoot.querySelector('.card') }`,
+    );
+    await driver.executeScript(`document.querySelector('video').pause()`);
+
+    // The site's fullscreen button makes its player box fullscreen: our panel must be inside.
+    await driver.findElement(By.id('pjs-fs')).click();
+    await ctx.sleep(1200);
+    const fs = await probe(ctx);
+    await ctx.shot('m4b-custom-tag-fullscreen');
+    await driver.executeScript('return document.fullscreenElement && document.exitFullscreen()');
+    await ctx.sleep(500);
+
+    // Reload: a new blob: URL every time, the page is the same, so the track comes back.
+    await driver.navigate().refresh();
+    await hostIn(ctx);
+    const restored = await waitFor(ctx, (q) => q.lines === 29, 'track restored after reload', 8000);
+
+    // Next episode in the same <video> (new blob: URL).
+    await driver.findElement(By.id('pjs-ep2')).click();
+    const episode = await waitFor(ctx, (q) => q.lines === 0, 'track reset on the next episode', 8000);
+    await e2eCall(ctx, 'settings', { panel: { compact: 'auto' } });
+    const logs = (await e2eCall(ctx, 'logs')).result.filter((l) => l.startsWith('error'));
+
+    if (!before.blob || before.readyState !== 0) throw new Error(`fixture state: ${JSON.stringify(before)}`);
+    if (!onTop.launcher || !onTop.panel)
+      throw new Error(`overlay under the player's layers: ${JSON.stringify(onTop)}`);
+    if (seek.keys !== keysBefore + 1 || seek.t < 24)
+      throw new Error(`site arrow key: ${JSON.stringify(seek)}`);
+    if (
+      afterSpace.keys !== seek.keys ||
+      afterSpace.toggles !== togglesBefore ||
+      afterSpace.card ||
+      afterSpace.paused
+    )
+      throw new Error(`Space: ${JSON.stringify(afterSpace)}`);
+    if (!fs.fullscreen || !fs.panel) throw new Error(`fullscreen: ${JSON.stringify(fs)}`);
+    if (logs.length) throw new Error(`errors: ${logs.join(' | ')}`);
+    return {
+      before,
+      onTop,
+      playing,
+      siteSeek: seek,
+      offset: offset.toast,
+      afterSpace,
+      fullscreen: fs.fullscreen,
+      restored: restored.lines,
+      episodeToast: episode.toast,
+    };
+  },
+
+  async 'm4b-custom-tag-blank-frame'(ctx) {
+    return customTagInFrame(ctx, 'blank');
+  },
+
+  async 'm4b-custom-tag-srcdoc-frame'(ctx) {
+    return customTagInFrame(ctx, 'srcdoc');
+  },
 };
+
+/** The same player built inside an iframe that has no URL of its own (about:blank / about:srcdoc). */
+async function customTagInFrame(ctx, mode) {
+  const { driver, By } = ctx;
+  await e2eCall(ctx, 'settings', { panel: { compact: 'off' } });
+  await driver.get(`${ctx.base}/players/custom-tag-player.html?frame=${mode}`);
+  const outer = await driver.findElement(By.id('outer'));
+  await driver.switchTo().frame(outer);
+  try {
+    await hostIn(ctx);
+  } catch {
+    const info = await driver.executeScript(
+      'return { url: location.href, videos: document.querySelectorAll("video").length }',
+    );
+    await driver.switchTo().defaultContent();
+    throw new Error(`no overlay in the ${mode} frame: ${JSON.stringify(info)}`);
+  }
+  if ((await dropFixture(ctx, '/sample.srt', 'Maple.Street.S01E03.srt')) !== true)
+    throw new Error('drop failed');
+  await waitFor(ctx, (q) => q.lines === 29, 'panel in the frame');
+  await driver.executeScript(`document.querySelector('video').currentTime = 20`);
+
+  // FR-V5: focus in the parent page; the offset key must reach the frame.
+  await driver.switchTo().defaultContent();
+  await driver.findElement(By.id('outside')).click();
+  await driver.actions().sendKeys(']').perform();
+  await driver.switchTo().frame(outer);
+  const offset = await waitFor(
+    ctx,
+    (q) => q.toast && q.toast.includes('+0.1'),
+    'offset from the parent page',
+  );
+
+  // The track is filed under the page, not under "about:blank": a reload restores it.
+  await driver.switchTo().defaultContent();
+  await driver.navigate().refresh();
+  await driver.switchTo().frame(await driver.findElement(By.id('outer')));
+  await hostIn(ctx);
+  const restored = await waitFor(ctx, (q) => q.lines === 29, 'track restored in the frame', 8000);
+  await driver.switchTo().defaultContent();
+  await ctx.shot(`m4b-custom-tag-${mode}`);
+  await e2eCall(ctx, 'settings', { panel: { compact: 'auto' } });
+  return { mode, offset: offset.toast, restored: restored.lines };
+}

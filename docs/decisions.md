@@ -158,3 +158,39 @@ All of it stays generic: no host names, selectors or player-specific code.
   mounted inside the cross-origin frame and lifted above the player's own UI, offset and Alt+L pressed on the parent page
   reached the frame, the parent did not scroll. The srt is passed from Node because the provider's CSP blocks fetches to
   localhost. The archive.org embed could not be checked: the connection is reset from this network.
+
+## D-018 Custom-tag players and frames without a URL (2026-10-23)
+
+The owner supplied a structure dump of a widespread commercial HTML5 player. `players/custom-tag-player.html` copies that
+structure:
+
+- the video sits in layers of an unknown element (`pjsdiv`);
+- `<video preload="none" crossorigin="anonymous">` plays a `blob:` source;
+- an empty `<iframe>` lies over the picture;
+- the player handles keys on `document`, goes fullscreen on its own box, and switches episodes in the same `<video>`.
+
+The extension still has no code for any particular player. The fixture runs in three variants: in the page, inside an
+`<iframe>` with no `src` that the page builds from script, and inside a `srcdoc` iframe.
+
+Found and fixed:
+
+1. **Frames without a URL had no content script.** The content script now uses `match_about_blank`. Those frames have
+   no URL or title of their own, so the media key and episode detection use the inherited base URL and the parent's
+   title (`utils/page.ts`). The library entry belongs to the page, not to `about:blank`. Cost: the script now also
+   starts in empty ad or utility frames. It reads settings and sends one message there; the UI stays lazy.
+2. **Stale frame state after navigation broke hotkey forwarding** (intermittent). The `pagehide` report from the
+   previous page does not always arrive, so the registry could still list the old top frame as the player. Hotkeys
+   from the new top frame were then "forwarded" to itself and dropped. Every content script now announces its new
+   document first, before anything awaits (`frames/get`). The background drops that frame's old entry, or the whole tab
+   when it is the top frame.
+
+Checked without changes: the overlay stays above the player's layers (no lift needed there), the site's own keys
+(arrows) still work, our Space with a card open never reaches the site, the panel shows in the site's fullscreen, a
+reload restores the track despite a new `blob:` URL, and a new episode resets the track.
+
+Not covered:
+
+- **MediaSource.** The fixture feeds a whole-file `blob:` rather than a MediaSource: there is no encoder here to make
+  segments. The extension sees MediaSource only through `src`/`currentSrc`/`duration`, which this covers.
+- **Live check.** No legal public page with this player was found without signing up. The player's vendor site shows
+  only images of its skins.

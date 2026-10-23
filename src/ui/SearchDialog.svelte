@@ -6,6 +6,7 @@
   import type { MessageKey } from '../i18n';
   import type { OverlayActions } from './actions';
   import type { OverlayState } from './state.svelte';
+  import { pageTitle } from '../utils/page';
 
   interface Props {
     ui: OverlayState;
@@ -16,7 +17,7 @@
 
   // FR-S7: prefilled from "What are we watching?", else from the page title.
   const initial = untrack(() => {
-    const m = ui.mediaInfo.title ? ui.mediaInfo : guessMediaInfo(undefined, document.title);
+    const m = ui.mediaInfo.title ? ui.mediaInfo : guessMediaInfo(undefined, pageTitle());
     return { ...m, langs: ui.settings.sources.osLanguages };
   });
   let query = $state(initial.title ?? '');

@@ -43,6 +43,22 @@ export class FrameRegistry {
     }
   }
 
+  /**
+   * A frame started a new document. Whatever it reported before is obsolete; a new top document means
+   * the whole tab navigated. pagehide reports are not reliable enough to depend on.
+   */
+  documentStarted(tabId: number, frameId: number): boolean {
+    const frames = this.tabs.get(tabId);
+    if (!frames) return false;
+    if (frameId === 0) {
+      this.tabs.delete(tabId);
+      return true;
+    }
+    if (!frames.has(frameId)) return false;
+    this.forget(tabId, frameId);
+    return true;
+  }
+
   forget(tabId: number, frameId?: number): void {
     if (frameId === undefined) this.tabs.delete(tabId);
     else this.update(tabId, frameId, { hasVideo: false, hasTrack: false, cardOpen: false });

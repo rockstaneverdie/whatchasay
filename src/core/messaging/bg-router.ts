@@ -103,9 +103,16 @@ export const handlers: Handlers = {
     broadcastPlayer(tabId);
     return null;
   },
+  // Sent once by every content script when its document starts.
   'frames/get': async (_m, sender) => {
     await framesReady();
-    return sender.tab?.id !== undefined ? frames.best(sender.tab.id) : null;
+    const tabId = sender.tab?.id;
+    if (tabId === undefined) return null;
+    if (sender.frameId !== undefined && frames.documentStarted(tabId, sender.frameId)) {
+      saveFrames();
+      broadcastPlayer(tabId);
+    }
+    return frames.best(tabId);
   },
   'hotkey/relay': async (m, sender) => {
     await framesReady();

@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FrameRegistry } from '../../src/core/messaging/frames';
 import { findVideos, hasClosedPlayer } from '../../src/core/player/find-video';
 import { DEFAULT_HOTKEYS } from '../../src/core/player/hotkeys';
 import { durationSuggestsNewMedia, routeKey, type KeyContext } from '../../src/core/player/key-router';
 import { composedAncestors, composedContains } from '../../src/utils/dom';
+import { pageTitle, pageUrl } from '../../src/utils/page';
 
 const key = (
   code: string,
@@ -105,6 +106,24 @@ describe('FrameRegistry (FR-V5)', () => {
     copy.forget(4);
     expect(copy.best(4)).toBeNull();
   });
+
+  it('drops state left over from a previous document', () => {
+    const r = new FrameRegistry();
+    const withTrack = { hasVideo: true, hasTrack: true, cardOpen: false };
+    // The top page had the player; its pagehide report never arrived.
+    r.update(1, 0, withTrack);
+    r.update(1, 9, withTrack);
+    // A frame reloads: only its own entry goes.
+    expect(r.documentStarted(1, 9)).toBe(true);
+    expect(r.best(1)?.frameId).toBe(0);
+    expect(r.documentStarted(1, 9)).toBe(false);
+    // The top frame starts a new document: the whole tab is new, so the new player frame wins.
+    r.update(1, 9, withTrack);
+    expect(r.documentStarted(1, 0)).toBe(true);
+    expect(r.best(1)).toBeNull();
+    r.update(1, 12, withTrack);
+    expect(r.best(1)?.frameId).toBe(12);
+  });
 });
 
 describe('shadow DOM players (FR-V6)', () => {
@@ -132,5 +151,31 @@ describe('shadow DOM players (FR-V6)', () => {
     Object.defineProperty(locked, 'openOrClosedShadowRoot', { value: closed });
     expect(hasClosedPlayer(document)).toBe(true);
     expect(findVideos(document)).toHaveLength(0); // never mounted into
+  });
+});
+
+describe('page identity of frames without a URL', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    Reflect.deleteProperty(document, 'baseURI');
+    document.title = '';
+  });
+
+  it('uses the location of an ordinary frame', () => {
+    vi.stubGlobal('location', new URL('https://videos.example/watch/7?t=3'));
+    document.title = 'Maple Street S01E03';
+    expect(pageUrl().pathname).toBe('/watch/7');
+    expect(pageTitle()).toBe('Maple Street S01E03');
+  });
+
+  it('uses the inherited base URL and the parent title in about:blank / about:srcdoc', () => {
+    vi.stubGlobal('location', new URL('about:srcdoc'));
+    Object.defineProperty(document, 'baseURI', {
+      value: 'https://videos.example/watch/7',
+      configurable: true,
+    });
+    vi.stubGlobal('parent', { document: { title: 'Maple Street S01E03' } });
+    expect(pageUrl().origin + pageUrl().pathname).toBe('https://videos.example/watch/7');
+    expect(pageTitle()).toBe('Maple Street S01E03');
   });
 });

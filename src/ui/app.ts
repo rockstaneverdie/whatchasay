@@ -20,6 +20,7 @@ import { listPageTracks, readPageTrack } from '../core/player/page-tracks';
 import type { MediaInfo, Track } from '../core/subtitles/types';
 import { sha256Hex } from '../utils/hash';
 import { log, safe } from '../utils/log';
+import { pageTitle, pageUrl } from '../utils/page';
 import type { OverlayActions } from './actions';
 import { OverlayHost } from './host';
 import Overlay from './Overlay.svelte';
@@ -73,7 +74,7 @@ export class SubtextApp {
   private publishTimer: ReturnType<typeof setTimeout> | undefined;
   private prevDuration = NaN;
   private prevDurationAt = 0;
-  private lastPath = location.pathname;
+  private lastPath = pageUrl().pathname;
   private videoFullscreenSeen = false;
   /** Set by the explain client (M2). */
   explainHandler: ((target: ExplainTarget) => void) | null = null;
@@ -89,6 +90,14 @@ export class SubtextApp {
     this.listen(window, 'keydown', this.onKeyDown, true);
     this.listen(window, 'keyup', this.onKeyUp, true);
     this.listen(window, 'keypress', this.onKeyUp, true);
+    // FR-V5: before anything awaits, so the background drops this frame's (or, for the top frame,
+    // the whole tab's) state from the previous document before any frame of this one reports.
+    // The answer says where the video is, for forwarding hotkeys from a frame without one.
+    void sendBg({ type: 'frames/get' })
+      .then((r) => {
+        if (!this.video) this.remote = r;
+      })
+      .catch(() => {});
 
     try {
       this.state.settings = await loadSettings();
@@ -124,12 +133,6 @@ export class SubtextApp {
     // FR-V9: SPA navigation that keeps the same <video> shows up as a new path.
     const pathPoll = setInterval(() => safe(this.checkPath), 1000);
     this.globalCleanup.push(() => clearInterval(pathPoll));
-    // FR-V5: a frame without a video learns where the video is, to forward hotkeys.
-    void sendBg({ type: 'frames/get' })
-      .then((r) => {
-        if (!this.video) this.remote = r;
-      })
-      .catch(() => {});
     this.listen(window, 'pagehide', () => {
       if (!this.video) return;
       void sendBg({
@@ -140,8 +143,9 @@ export class SubtextApp {
   }
 
   private checkPath = () => {
-    if (location.pathname === this.lastPath) return;
-    this.lastPath = location.pathname;
+    const path = pageUrl().pathname;
+    if (path === this.lastPath) return;
+    this.lastPath = path;
     if (this.video) setTimeout(() => void this.restoreForPage(), 300);
   };
 
@@ -362,7 +366,8 @@ export class SubtextApp {
   // ---------------------------------------------------------------- tracks
 
   private async computeMediaKey(): Promise<string> {
-    return (await sha256Hex(location.origin + location.pathname + document.title)).slice(0, 16);
+    const page = pageUrl();
+    return (await sha256Hex(page.origin + page.pathname + pageTitle())).slice(0, 16);
   }
 
   /** FR-S5: pick up the track remembered for this page. */
@@ -431,7 +436,7 @@ export class SubtextApp {
     try {
       const { track } = await trackFromFile(bytes, name, encoding);
       const known = await sendBg({ type: 'library/track-info', trackId: track.id }).catch(() => null);
-      const info: MediaInfo = { ...guessMediaInfo(name, document.title), ...(known ?? {}) };
+      const info: MediaInfo = { ...guessMediaInfo(name, pageTitle()), ...(known ?? {}) };
       this.setTrack(track);
       this.state.mediaInfo = info;
       this.mediaKey ||= await this.computeMediaKey();
@@ -448,7 +453,7 @@ export class SubtextApp {
   /** Loads a track from a non-file source; `media` (e.g. from OpenSubtitles) wins over the page title guess. */
   async loadTrack(track: Track, media?: MediaInfo) {
     this.setTrack(track);
-    this.state.mediaInfo = { ...guessMediaInfo(undefined, document.title), ...(media ?? {}) };
+    this.state.mediaInfo = { ...guessMediaInfo(undefined, pageTitle()), ...(media ?? {}) };
     this.mediaKey ||= await this.computeMediaKey();
     await sendBg({
       type: 'library/save',

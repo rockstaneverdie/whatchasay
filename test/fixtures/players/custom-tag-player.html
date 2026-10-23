@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Maple Street S01E03 – Custom-tag player</title>
+    <!--
+      The DOM shape of a widespread commercial HTML5 player, built from a structure dump: layers of an
+      unknown element (`pjsdiv`), a <video preload="none" crossorigin="anonymous"> fed from a blob: URL,
+      an empty <iframe> laid over the picture, keyboard handled on document, fullscreen on the player
+      box, episodes switched in the same <video>. The extension has no code for any of this; the
+      fixture only checks that the generic paths cope.
+
+      ?frame=blank  – the whole player lives in an <iframe> without src, built by the page (about:blank)
+      ?frame=srcdoc – the same in a srcdoc <iframe> (about:srcdoc)
+    -->
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        font:
+          14px system-ui,
+          sans-serif;
+        background: #eef0f4;
+      }
+      #outer {
+        width: 960px;
+        height: 540px;
+        border: 0;
+        display: block;
+      }
+      .tall {
+        height: 1200px;
+      }
+    </style>
+  </head>
+  <body>
+    <p id="outside">A page with a custom-tag player. Click here to move focus out of the player.</p>
+    <div id="mount"></div>
+    <div class="tall"></div>
+    <script>
+      window.siteKeys = 0;
+      window.siteToggles = 0;
+      const EPISODES = ['../media/tone.wav', '../media/long.wav'];
+
+      /** Builds the player into `doc` (this page, or an iframe's document). */
+      window.buildPlayer = function (doc, mount) {
+        const el = (tag, style, attrs = {}) => {
+          const n = doc.createElement(tag);
+          if (style) n.setAttribute('style', style);
+          for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+          return n;
+        };
+        if (doc !== document) doc.body.style.margin = '0';
+        const player = el(
+          'div',
+          'position: relative; width: 960px; height: 540px; background: #000; overflow: hidden;',
+          {
+            id: 'player',
+          },
+        );
+        const box = el(
+          'pjsdiv',
+          'position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; text-align: center;',
+        );
+        const video = el('video', 'width: 100%; height: 100%; object-fit: contain;', {
+          preload: 'none',
+          crossorigin: 'anonymous',
+        });
+        box.append(video);
+        // Empty frame over the picture (ad/cast slot); idle, so it lets clicks through.
+        const slot = el(
+          'iframe',
+          'position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; z-index: 1; pointer-events: none;',
+          { id: 'pjsfrrscdnplayer' },
+        );
+        const catcher = el(
+          'pjsdiv',
+          'position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;',
+          {
+            id: 'pjs-catcher',
+          },
+        );
+        const bar = el(
+          'pjsdiv',
+          'position: absolute; left: 0; right: 0; bottom: 0; height: 44px; z-index: 3; display: flex; gap: 6px; align-items: center; padding: 0 8px; background: linear-gradient(transparent, rgba(0,0,0,.7));',
+        );
+        const button = (id, text) => {
+          const b = el(
+            'pjsdiv',
+            'color: #fff; cursor: pointer; padding: 4px 8px; border: 1px solid #fff4; border-radius: 4px;',
+            { id },
+          );
+          b.textContent = text;
+          bar.append(b);
+          return b;
+        };
+        const play = button('pjs-play', 'Play');
+        const ep1 = button('pjs-ep1', 'Episode 1');
+        const ep2 = button('pjs-ep2', 'Episode 2');
+        const fs = button('pjs-fs', 'Fullscreen');
+        player.append(box, slot, catcher, bar);
+        mount.append(player);
+
+        const win = doc.defaultView;
+        win.siteKeys = 0;
+        win.siteToggles = 0;
+        const toggle = () => {
+          win.siteToggles++;
+          video.paused ? video.play() : video.pause();
+        };
+        let current = '';
+        const load = (i) =>
+          fetch(EPISODES[i], { cache: 'no-store' })
+            .then((r) => r.blob())
+            .then((b) => {
+              if (current) URL.revokeObjectURL(current);
+              current = URL.createObjectURL(b);
+              video.src = current;
+            });
+        catcher.addEventListener('click', toggle);
+        play.addEventListener('click', toggle);
+        ep1.addEventListener('click', () => load(0));
+        ep2.addEventListener('click', () => load(1));
+        fs.addEventListener('click', () =>
+          doc.fullscreenElement ? doc.exitFullscreen() : player.requestFullscreen(),
+        );
+        // Keyboard on the player's document, bubbling: Space, arrows, F.
+        doc.addEventListener('keydown', (e) => {
+          if (!['Space', 'ArrowLeft', 'ArrowRight', 'KeyF'].includes(e.code)) return;
+          win.siteKeys++;
+          e.preventDefault();
+          if (e.code === 'Space') toggle();
+          if (e.code === 'ArrowLeft') video.currentTime -= 10;
+          if (e.code === 'ArrowRight') video.currentTime += 10;
+          if (e.code === 'KeyF') fs.click();
+        });
+        return load(0);
+      };
+
+      const mode = new URLSearchParams(location.search).get('frame');
+      const mount = document.getElementById('mount');
+      if (!mode) {
+        buildPlayer(document, mount);
+      } else {
+        const outer = document.createElement('iframe');
+        outer.id = 'outer';
+        outer.setAttribute('allowfullscreen', '');
+        if (mode === 'srcdoc') {
+          outer.srcdoc =
+            '<!doctype html><body><script>parent.buildPlayer(document, document.body)<\/script></body>';
+          mount.append(outer);
+        } else {
+          mount.append(outer);
+          // Built straight into the initial about:blank document, as some player loaders do.
+          buildPlayer(outer.contentDocument, outer.contentDocument.body);
+        }
+      }
+    </script>
+  </body>
+</html>
