@@ -26,6 +26,7 @@ Spec: [docs/TZ.md](docs/TZ.md) · decisions: [docs/decisions.md](docs/decisions.
 | `pnpm fixtures`       | serves `test/fixtures` on http://localhost:5555                                             |
 | `pnpm web-ext:run`    | opens Firefox with the built extension on the fixture player (run `pnpm fixtures` too)      |
 | `pnpm e2e [prefix…]`  | builds the e2e variant and runs WebDriver scenarios in real Firefox, screenshots in `.e2e/` |
+| `pnpm e2e live`       | live check on a real legal site (Wikimedia Commons, Sintel CC-BY); needs the internet       |
 | `pnpm eval`           | prompt quality eval, see below                                                              |
 
 ## Trying it

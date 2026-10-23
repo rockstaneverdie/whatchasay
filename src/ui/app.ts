@@ -332,7 +332,7 @@ export class SubtextApp {
       type: 'library/save',
       mediaKey: this.mediaKey,
       track,
-      mediaInfo: this.state.mediaInfo,
+      mediaInfo: { ...this.state.mediaInfo },
     }).catch((e) => log.warn('could not save track', e));
   }
 

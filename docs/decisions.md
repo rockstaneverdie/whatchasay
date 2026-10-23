@@ -107,3 +107,22 @@ The owner asked that the extension work on third-party video players, including 
 already, so the TZ now requires robust generic support for third-party and embedded players (FR-V5…V10, M4b) without
 naming illegal sources as a target: the TZ's own 3.3 and Mozilla's add-on policies rule out positioning the product for
 unlicensed content, and that would put the AMO listing at risk. Testing is done on legal sites only.
+
+## D-016 Live test on a real third-party player (Wikimedia Commons, 2026-10-23)
+
+`pnpm e2e live` runs `scripts/e2e-live.mjs` against Sintel (Blender Foundation, CC-BY) on Wikimedia Commons: a poster
+player that opens a video.js player in a modal, 43 page subtitle tracks, captions fetched from `api.php`. AI answers
+come from the local mock. Passed: overlay follows the real player, page tracks listed, the page-loaded VTT spotted
+(FR-S8), English track imported (26 cues), compact mode on the 898 px player (7.7), side panel in sync with the page's
+own captions (10 of 11 samples with a cue agreed; the other fell on a cue boundary), word click pauses, card streams,
+Space resumes, panel visible in video.js fullscreen.
+
+Three bugs found there and fixed, each with a local regression test:
+
+1. A player inserted paused next to a poster `<video>` and started later never received the overlay — the watcher
+   only re-ranked when the order changed. Now every `play` event lets the app choose again (`m4b-lazy-player-swap`).
+2. Track labels wrapped in bidi controls (`English \u202A(en)\u202C`) displayed the language twice and broke matching.
+   Labels are cleaned; the language is added only when the label lacks it.
+3. Tracks imported from page tracks, OpenSubtitles or page-loaded files were never saved to the library
+   (`DataCloneError`: a Svelte state proxy in the message), so a reload lost them. `sendBg` now sends plain data;
+   `m3-page-track-import` reloads and checks the restore.

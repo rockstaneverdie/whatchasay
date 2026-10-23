@@ -67,8 +67,17 @@ export type BgResponse<T extends BgRequest> = BgResponses[T['type']];
 /** Wire wrapper so errors cross the boundary as data. */
 export type Wire<T> = { ok: true; value: T } | { ok: false; error: string };
 
+/** Messages are plain data. Svelte state proxies cannot be structured-cloned, so they are unwrapped here. */
+function plain<T>(msg: T): T {
+  try {
+    return structuredClone(msg);
+  } catch {
+    return JSON.parse(JSON.stringify(msg)) as T;
+  }
+}
+
 export async function sendBg<T extends BgRequest>(msg: T): Promise<BgResponse<T>> {
-  const res = (await browser.runtime.sendMessage(msg)) as Wire<BgResponse<T>> | undefined;
+  const res = (await browser.runtime.sendMessage(plain(msg))) as Wire<BgResponse<T>> | undefined;
   if (!res) throw new Error(`[whatchasay] no response to ${msg.type}`);
   if (!res.ok) throw new Error(res.error);
   return res.value;

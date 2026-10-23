@@ -10,6 +10,26 @@ import { log } from './log';
  */
 export function installE2EHooks(): void {
   log.warn('E2E build: test hooks are active');
+  // Content-script console output is invisible to WebDriver; keep the warnings and errors for op 'logs'.
+  const logs: string[] = [];
+  const keep =
+    (level: string, orig: (...a: unknown[]) => void) =>
+    (...args: unknown[]) => {
+      logs.push(
+        `${level} ${args
+          .map((a) =>
+            a instanceof Error
+              ? `${a.name}: ${a.message}
+${a.stack}`
+              : String(a),
+          )
+          .join(' ')}`.slice(0, 2000),
+      );
+      orig(...args);
+    };
+  console.error = keep('error', console.error.bind(console));
+  console.warn = keep('warn', console.warn.bind(console));
+  window.addEventListener('error', (e) => logs.push(`onerror ${e.message}`));
   window.addEventListener('message', (e: MessageEvent) => {
     const data = e.data as { type?: string; id?: number; op?: string; payload?: unknown } | null;
     if (e.source !== window || data?.type !== 'subtext-e2e') return;
@@ -17,6 +37,7 @@ export function installE2EHooks(): void {
     const run = async () => {
       if (op === 'settings') return saveSettings(payload as SettingsPatch);
       if (op === 'bg') return sendBg(payload as BgRequest);
+      if (op === 'logs') return logs.slice(-30);
       if (op === 'os-test-key') {
         const key = String(payload);
         if (!key.startsWith('e2e-')) throw new Error('only e2e- keys');

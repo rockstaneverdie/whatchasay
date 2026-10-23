@@ -9,7 +9,10 @@ import firefox from 'selenium-webdriver/firefox.js';
 import { startMockAi } from './mock-ai.mjs';
 import { startMockOs } from './mock-opensubtitles.mjs';
 import { serve } from './serve-fixtures.mjs';
-import { scenarios } from './e2e-scenarios.mjs';
+import { liveScenarios } from './e2e-live.mjs';
+import { scenarios as localScenarios } from './e2e-scenarios.mjs';
+
+const scenarios = { ...localScenarios, ...liveScenarios };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = join(root, '.e2e');
@@ -63,6 +66,8 @@ try {
   };
   const wanted = process.argv.slice(2);
   for (const [name, run] of Object.entries(scenarios)) {
+    // live-* scenarios hit real websites; they only run when asked for by name.
+    if (name.startsWith('live-') && !wanted.some((w) => name.startsWith(w) && w.startsWith('live'))) continue;
     if (wanted.length && !wanted.some((w) => name.startsWith(w))) continue;
     const t0 = Date.now();
     try {

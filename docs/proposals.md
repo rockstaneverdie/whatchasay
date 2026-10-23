@@ -14,3 +14,10 @@ Ideas noticed while implementing M0–M3. Not built — the TZ wins until the ow
    lines. An option "card at the top of the video" could suit small players.
 5. **Auto-pick the language of page tracks.** When a page has several `<track>`s, prefer the one whose language
    matches the video's original language (needs a heuristic; keep the manual choice).
+6. **Hide the player's own captions while ours are shown.** On Commons the site keeps rendering its English
+   captions under our panel/compact line, so the text appears twice. An opt-in "hide page captions while WhatchaSay?
+   shows subtitles" (switching the page track to `hidden` and restoring it) would fix that; it changes the site's
+   player state, so it should be the user's choice.
+7. **Revisit the compact threshold.** Typical embedded players are ~900 px wide, where a 34 % panel is just under
+   320 px, so 7.7 picks compact mode. The side panel still read fine at 305 px in the live test; a 280 px threshold or
+   a per-site memory of the user's choice may suit better. Needs the owner's call (it changes 7.7).

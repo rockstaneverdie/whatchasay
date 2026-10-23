@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Lazy player – Fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        font:
+          14px system-ui,
+          sans-serif;
+        background: #eef;
+      }
+      #poster {
+        position: relative;
+        width: 640px;
+        height: 272px;
+        background: #223;
+      }
+      #poster video {
+        width: 100%;
+        height: 100%;
+      }
+      #poster-play {
+        position: absolute;
+        inset: 0;
+        margin: auto;
+        width: 80px;
+        height: 40px;
+      }
+      #modal {
+        position: fixed;
+        inset: 60px 100px;
+        background: #000;
+        display: none;
+      }
+      #real-player {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+      #real-player video {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <p>
+      Mimics a common third-party player pattern: a poster player stays in the page; Play opens a modal with
+      the real player, inserted paused and started a moment later.
+    </p>
+    <div id="poster">
+      <video poster=""></video>
+      <button id="poster-play">Play</button>
+    </div>
+    <div id="modal"><div id="real-player"></div></div>
+    <script>
+      document.getElementById('poster-play').onclick = () => {
+        document.getElementById('modal').style.display = 'block';
+        const v = document.createElement('video');
+        v.src = 'media/tone.wav';
+        v.preload = 'auto';
+        document.getElementById('real-player').append(v);
+        setTimeout(() => v.play(), 600);
+      };
+    </script>
+  </body>
+</html>

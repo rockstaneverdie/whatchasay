@@ -8,6 +8,17 @@ export interface PageTrack {
 
 const TEXT_KINDS = new Set(['subtitles', 'captions']);
 
+/** Sites wrap labels in bidi controls (e.g. "English \u202A(en)\u202C"); they only confuse display and matching. */
+const BIDI_CONTROLS = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+
+/** Menu text for a track: the label, plus the language only when the label does not already show it. */
+export function trackTitle(t: { label: string; lang?: string }): string {
+  const lang = t.lang?.toLowerCase();
+  const label = t.label.toLowerCase();
+  if (!lang || label === lang || label.includes(`(${lang})`)) return t.label;
+  return `${t.label} (${t.lang})`;
+}
+
 /** FR-S6: the page's own text tracks (`<track>` or script-added), whatever the site. */
 export function listPageTracks(video: HTMLVideoElement): PageTrack[] {
   const out: PageTrack[] = [];
@@ -17,7 +28,10 @@ export function listPageTracks(video: HTMLVideoElement): PageTrack[] {
     if (!TEXT_KINDS.has(t.kind)) continue;
     out.push({
       index: i,
-      label: t.label || t.language || `Track ${i + 1}`,
+      label: (t.label || t.language || `Track ${i + 1}`)
+        .replace(BIDI_CONTROLS, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
       ...(t.language ? { lang: t.language } : {}),
     });
   }

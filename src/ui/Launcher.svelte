@@ -1,6 +1,7 @@
 <script lang="ts">
   import { SUBTITLE_ENCODINGS, type SubtitleEncoding } from '../core/subtitles/decode';
   import { formatHotkey } from '../core/player/hotkeys';
+  import { trackTitle } from '../core/player/page-tracks';
   import type { OverlayActions } from './actions';
   import type { OverlayState } from './state.svelte';
 
@@ -89,7 +90,7 @@
         {:else}
           {#each ui.pageTracks as tr (tr.index)}
             <button type="button" role="menuitem" onclick={run(() => actions.importPageTrack(tr.index))}>
-              {tr.label}{tr.lang ? ` (${tr.lang})` : ''}
+              {trackTitle(tr)}
             </button>
           {/each}
         {/if}

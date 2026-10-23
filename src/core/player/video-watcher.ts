@@ -9,6 +9,8 @@ export class VideoWatcher {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private interval: ReturnType<typeof setInterval>;
   private last: HTMLVideoElement[] = [];
+  /** A play event must reach onChange even when the ranking did not change (see check). */
+  private forceNext = false;
 
   constructor(
     private readonly doc: Document,
@@ -32,7 +34,11 @@ export class VideoWatcher {
   }
 
   private onPlay = (e: Event) => {
-    if (e.target instanceof HTMLVideoElement) this.schedule(0);
+    if (!(e.target instanceof HTMLVideoElement)) return;
+    // A player that was inserted paused and starts later keeps its rank, but the choice of
+    // "the video being watched" depends on who is playing — so let the owner decide again.
+    if (e.type === 'play') this.forceNext = true;
+    this.schedule(0);
   };
 
   private schedule(delay: number) {
@@ -46,7 +52,9 @@ export class VideoWatcher {
   check(): void {
     const ranked = rankVideos(findVideos(this.doc));
     const same = ranked.length === this.last.length && ranked.every((v, i) => v === this.last[i]);
-    if (same) return;
+    const force = this.forceNext;
+    this.forceNext = false;
+    if (same && !force) return;
     this.last = ranked;
     this.onChange(ranked);
   }

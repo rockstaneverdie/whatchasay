@@ -585,7 +585,27 @@ export const scenarios = {
     const site = await driver.executeScript(`return document.querySelector('video').textTracks[0].mode`);
     await ctx.shot('m3-page-track');
     if (site !== 'disabled') throw new Error(`site track mode changed to ${site}`);
-    return { toast: p.toast, siteTrackMode: site };
+    // Regression (found on Wikimedia Commons): imported tracks must be saved, so a reload restores them.
+    await driver.navigate().refresh();
+    const restored = await waitFor(ctx, (q) => q.lines === 9, 'imported track restored after reload', 8000);
+    return { toast: p.toast, siteTrackMode: site, restoredToast: restored.toast };
+  },
+
+  async 'm4b-lazy-player-swap'(ctx) {
+    // Pattern seen on Wikimedia Commons: a poster <video> stays in the page, the real player is
+    // inserted next to it paused and starts a moment later. The overlay must follow the real one.
+    const { driver, By } = ctx;
+    await driver.get(`${ctx.base}/lazy-player.html`);
+    await driver.wait(async () => driver.executeScript(`return !!document.querySelector('${HOST}')`), 8000);
+    const before = await driver.executeScript(`return document.querySelector('${HOST}').parentElement.id`);
+    await driver.findElement(By.id('poster-play')).click();
+    await driver.wait(
+      async () =>
+        driver.executeScript(`return document.querySelector('${HOST}')?.parentElement?.id === 'real-player'`),
+      6000,
+      'overlay did not follow the real player',
+    );
+    return { before, after: 'real-player' };
   },
 
   async 'm3-compact-and-english'(ctx) {
@@ -875,3 +895,5 @@ async function waitDialog(ctx, fn, what) {
     `dialog: ${what}`,
   );
 }
+
+export { probe, waitFor, shadowFind, shadowFindAll, waitCard, openMenu, clickMenuButton, httpJson };
