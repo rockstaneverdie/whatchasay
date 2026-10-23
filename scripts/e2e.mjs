@@ -26,7 +26,7 @@ if (!existsSync(join(root, 'test/fixtures/media/tone.wav'))) {
   throw new Error('media fixtures missing – run `pnpm fixtures:media` first');
 }
 
-const ADDON_ID = 'subtext@subtext-extension.invalid';
+const ADDON_ID = 'whatchasay@rocksta.dev';
 const ADDON_UUID = '5b7e1d2a-0c3f-4e8a-9d61-2f4a7c9e0b13';
 const PORT = 5555;
 const server = await serve(PORT);

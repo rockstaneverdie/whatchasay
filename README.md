@@ -19,6 +19,7 @@ Spec: [docs/TZ.md](docs/TZ.md) · decisions: [docs/decisions.md](docs/decisions.
 | `pnpm dev`            | dev build with reload in Firefox                                                             |
 | `pnpm build`          | production build → `.output/firefox-mv3`                                                     |
 | `pnpm zip`            | `.output/whatchasay-<version>-firefox.zip`                                                   |
+| `pnpm sign`           | signs with Mozilla (unlisted) for a permanent install, see below                             |
 | `pnpm lint`           | ESLint + Prettier check + svelte-check                                                       |
 | `pnpm test`           | Vitest unit and component tests                                                              |
 | `pnpm web-ext:lint`   | `web-ext lint` on the production build                                                       |
@@ -40,6 +41,24 @@ Spec: [docs/TZ.md](docs/TZ.md) · decisions: [docs/decisions.md](docs/decisions.
 5. Click a word in the panel. Space continues, Esc closes.
 
 Hotkeys (configurable): `Alt+L` panel, `E` explain current line, `R` replay line, `[` / `]` offset ±100 ms (Shift: ±1 s).
+
+## Permanent install (signed)
+
+A release Firefox keeps only add-ons signed by Mozilla. Self-distribution (unlisted) needs no store listing:
+
+1. Sign in at addons.mozilla.org, open **Tools → Manage API Keys**
+   (https://addons.mozilla.org/developers/addon/api/key/) and generate credentials.
+2. Put them into `.env` in the project root (git-ignored, left out of the source archive):
+   ```
+   WEB_EXT_API_KEY=user:12345:67
+   WEB_EXT_API_SECRET=…
+   ```
+3. `pnpm sign` builds, lints, uploads the add-on and its source archive, and waits for the automatic review
+   (usually minutes). The signed `.xpi` lands in `web-ext-artifacts/`.
+4. Remove a temporary copy from `about:debugging` if one is loaded, then drag the `.xpi` into Firefox (or
+   `about:addons` → ⚙ → Install Add-on From File) and confirm.
+
+Each signed build needs a new `version` in `package.json`. Updates install the same way over the old one.
 
 ## Layout
 

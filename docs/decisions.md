@@ -194,3 +194,21 @@ Not covered:
   segments. The extension sees MediaSource only through `src`/`currentSrc`/`duration`, which this covers.
 - **Live check.** No legal public page with this player was found without signing up. The player's vendor site shows
   only images of its skins.
+
+## D-019 Final add-on id and signed self-distribution (2026-10-23)
+
+For a permanent install in release Firefox the owner chose Mozilla signing on the unlisted channel (no store listing)
+and the final id `whatchasay@rocksta.dev`. Mozilla binds the id to the owner's account at the first signing, and it can
+never change afterwards. This replaces the placeholder from D-014. Data stored under the old id (settings, the AI key in
+`storage.local`) does not carry over to the signed add-on; IndexedDB names are unaffected but live under the new
+add-on's origin, so the library and cache start empty too.
+
+`pnpm sign` (`scripts/sign.mjs`):
+
+- builds the production zip and its source archive (the bundle is minified, so reviewers may ask for sources);
+- runs `web-ext lint`;
+- calls `web-ext sign --channel unlisted --upload-source-code`.
+
+The API credentials come from the environment or a git-ignored `.env`. web-ext reads them from the environment, so they
+never appear on a command line or in output. WXT's source archive does not follow `.gitignore`, so `.env*`, test media,
+screenshots and reports are excluded explicitly in `wxt.config.ts`; this was checked by building with a dummy `.env`.

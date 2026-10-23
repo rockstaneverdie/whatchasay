@@ -7,6 +7,18 @@ export default defineConfig({
   // root a component is mounted in, so the content script needs no web-accessible stylesheet.
   svelte: { vite: { compilerOptions: { runes: true, css: 'injected' } } },
   manifestVersion: 3,
+  // Source archive for Mozilla's review (pnpm sign). It does not follow .gitignore, so secrets and
+  // generated or local-only files are listed here.
+  zip: {
+    excludeSources: [
+      '.env',
+      '.env.*',
+      '.e2e/**',
+      'web-ext-artifacts/**',
+      'eval/reports/**',
+      'test/fixtures/media/**',
+    ],
+  },
   manifest: ({ mode }) => ({
     name: 'WhatchaSay?',
     description: 'A language-learning tool for watching videos with subtitles.',
@@ -25,7 +37,8 @@ export default defineConfig({
     action: { default_title: 'WhatchaSay?' },
     browser_specific_settings: {
       gecko: {
-        id: 'subtext@subtext-extension.invalid',
+        // Final: signed add-ons can never change it (D-019).
+        id: 'whatchasay@rocksta.dev',
         // 140: built-in data-collection consent (see docs/decisions.md, D-003).
         strict_min_version: '140.0',
         // Subtitle text (possibly from the page's <track>) goes to the AI provider the user picked.
