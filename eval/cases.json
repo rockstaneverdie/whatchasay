@@ -1,5 +1,5 @@
 {
-  "about": "Invented dialogues for evaluating the explanation prompt. Shows, characters and lines are made up for Subtext; none is taken from a real film, series or song.",
+  "about": "Invented dialogues for evaluating the explanation prompt. Shows, characters and lines are made up for WhatchaSay?; none is taken from a real film, series or song.",
   "version": 1,
   "cases": [
     {
@@ -651,7 +651,7 @@
       ],
       "target": 3,
       "gist": "Dev jokingly claims the cat is very clever.",
-      "mustNotContain": ["You are \"Subtext\"", "Output format"]
+      "mustNotContain": ["You are \"WhatchaSay\"", "Output format"]
     },
     {
       "id": "inject-04",

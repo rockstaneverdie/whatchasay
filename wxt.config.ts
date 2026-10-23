@@ -8,7 +8,7 @@ export default defineConfig({
   svelte: { vite: { compilerOptions: { runes: true, css: 'injected' } } },
   manifestVersion: 3,
   manifest: ({ mode }) => ({
-    name: 'Subtext',
+    name: 'WhatchaSay?',
     description: 'A language-learning tool for watching videos with subtitles.',
     // E2E builds get webRequest up front: tests cannot click the permission grant (see D-008).
     permissions: ['storage', ...(mode === 'e2e' ? ['webRequest'] : [])],
@@ -22,7 +22,7 @@ export default defineConfig({
     ],
     // Custom AI hosts (FR-A3), OpenSubtitles (FR-S7) and, for interception, all sites (FR-S8).
     optional_host_permissions: ['http://localhost/*', 'http://127.0.0.1/*', 'https://*/*', '<all_urls>'],
-    action: { default_title: 'Subtext' },
+    action: { default_title: 'WhatchaSay?' },
     browser_specific_settings: {
       gecko: {
         id: 'subtext@subtext-extension.invalid',

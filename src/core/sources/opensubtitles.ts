@@ -5,7 +5,7 @@ import type { MediaInfo } from '../subtitles/types';
 
 /** FR-S7: OpenSubtitles REST API v1 with the user's own API key. Background only. */
 
-export const OS_USER_AGENT = 'Subtext v0.1.0';
+export const OS_USER_AGENT = 'WhatchaSay v0.1.0';
 
 export interface OsSearchParams {
   query?: string;

@@ -31,7 +31,7 @@
 
 <main>
   <header>
-    <h1>Subtext</h1>
+    <h1>WhatchaSay?</h1>
     <nav aria-label="sections">
       {#each ['settings', 'sources', 'phrases', 'data'] as const as id (id)}
         <a href="#{id}" aria-current={tab === id ? 'page' : undefined}>{t(`opt.tab.${id}`)}</a>

@@ -78,3 +78,32 @@ through typed `runtime.sendMessage` calls.
 The only `UNSAFE_VAR_ASSIGNMENT` comes from the Svelte runtime, which builds static templates via `innerHTML` of
 compile-time strings. Our code never assigns HTML (ESLint forbids `innerHTML`/`outerHTML` and `{@html}`); model
 output is rendered as text nodes with a tiny `**bold**` splitter.
+
+## D-013 OpenSubtitles: user key, unofficial contract check, opt-in sniffing (M4)
+
+The TZ asks for the user's own OpenSubtitles key (BYOK). OpenSubtitles recommends one developer key per application;
+if that becomes a problem for the store listing, the owner decides between BYOK and an app key behind a proxy (M6).
+The API reference (Stoplight) only renders in a browser, so the contract — `Api-Key` + `User-Agent` headers,
+`/subtitles` with sorted lower-case parameters, two-step `/download`, `/login` token, `406` for an exhausted download
+quota — was taken from secondary sources and is exercised against `scripts/mock-opensubtitles.mjs`. Firefox does let an
+extension set `User-Agent` on `fetch` (checked in E2E). Not yet checked against the real API with a real key.
+
+Page-loaded subtitle files (FR-S8) are spotted from response headers only, behind the optional `webRequest`
+permission: granting it in the "Sources" tab is the opt-in, revoking it turns the feature off. The listener is
+registered in the background's first turn so the event page wakes for it. HLS `X-TIMESTAMP-MAP` is not applied;
+segmented captions use their cue times as written.
+
+## D-014 Product renamed to "WhatchaSay?"; technical ids unchanged
+
+Everything a user sees (manifest name, UI, prompt persona, `User-Agent`, log prefix, export file names, README) says
+WhatchaSay?. Internal ids stay as they were so local data survives: the add-on id `subtext@subtext-extension.invalid`,
+the IndexedDB name `subtext`, the shadow host tag `subtext-overlay`, the explain port name. The add-on id should be
+replaced with a final one before the first AMO upload (M6) — after that it can never change. `PROMPT_VERSION` was
+bumped because the persona name is part of the prompt.
+
+## D-015 Third-party players in the TZ (v1.1)
+
+The owner asked that the extension work on third-party video players, including unofficial sites. It is site-agnostic
+already, so the TZ now requires robust generic support for third-party and embedded players (FR-V5…V10, M4b) without
+naming illegal sources as a target: the TZ's own 3.3 and Mozilla's add-on policies rule out positioning the product for
+unlicensed content, and that would put the AMO listing at risk. Testing is done on legal sites only.

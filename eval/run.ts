@@ -155,7 +155,7 @@ async function main() {
   const cases = data.cases.filter((c) => !only.length || only.some((p) => c.id.startsWith(p)));
   const { provider, label, delayMs } = makeProvider();
   console.log(
-    `Subtext eval · ${label} · prompt ${PROMPT_VERSION} · level ${level} · lang ${outLang} · ${cases.length} cases\n`,
+    `WhatchaSay? eval · ${label} · prompt ${PROMPT_VERSION} · level ${level} · lang ${outLang} · ${cases.length} cases\n`,
   );
 
   const rows: Row[] = [];
@@ -210,7 +210,7 @@ async function main() {
   mkdirSync(outDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const md = [
-    `# Subtext eval — ${label}`,
+    `# WhatchaSay? eval — ${label}`,
     '',
     `Prompt ${PROMPT_VERSION} · level ${level} · lang ${outLang} · ${new Date().toISOString()}`,
     '',

@@ -2,7 +2,7 @@ import type { SubtitleFormat } from '../subtitles/parse';
 
 /**
  * FR-S8: recognises subtitle files among the responses a page receives — by content type or file
- * extension only, never by site. Media, playlists and manifests are ignored on purpose: Subtext does
+ * extension only, never by site. Media, playlists and manifests are ignored on purpose: WhatchaSay? does
  * not collect stream links.
  */
 

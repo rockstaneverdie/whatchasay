@@ -2,7 +2,7 @@ import type { UiLang } from '../core/storage/settings';
 
 /** Strings of the options page and popup (extension pages, not the overlay). */
 const ru = {
-  'opt.title': 'Subtext — настройки',
+  'opt.title': 'WhatchaSay? — настройки',
   'opt.tab.settings': 'Настройки',
   'opt.tab.phrases': 'Мои фразы',
   'opt.tab.data': 'Данные',
@@ -79,7 +79,7 @@ const ru = {
   'opt.hk.offsetForward': 'Сдвиг +100 мс (Shift: +1 с)',
   'opt.privacy': 'Приватность',
   'opt.privacy.text':
-    'Subtext не собирает телеметрию и ничего не отправляет разработчику. При поиске в OpenSubtitles туда уходят название, сезон, серия и языки. При запросе объяснения выбранному провайдеру ИИ уходят: название и данные серии из формы «Что смотрим?», текст субтитров эпизода (целиком или окно вокруг реплики в пределах бюджета), выбранная реплика и выделенные слова, ваш уровень и язык объяснения. Видео и звук никуда не передаются. Субтитры, кэш объяснений и фразы хранятся только в этом браузере.',
+    'WhatchaSay? не собирает телеметрию и ничего не отправляет разработчику. При поиске в OpenSubtitles туда уходят название, сезон, серия и языки. При запросе объяснения выбранному провайдеру ИИ уходят: название и данные серии из формы «Что смотрим?», текст субтитров эпизода (целиком или окно вокруг реплики в пределах бюджета), выбранная реплика и выделенные слова, ваш уровень и язык объяснения. Видео и звук никуда не передаются. Субтитры, кэш объяснений и фразы хранятся только в этом браузере.',
   'opt.saved': 'Сохранено',
   'opt.cache': 'Кэш объяснений',
   'opt.cache.stats': 'Записей: {n}, ~{mb} МБ',
@@ -112,7 +112,7 @@ const ru = {
 type Key = keyof typeof ru;
 
 const en: Record<Key, string> = {
-  'opt.title': 'Subtext — settings',
+  'opt.title': 'WhatchaSay? — settings',
   'opt.tab.settings': 'Settings',
   'opt.tab.phrases': 'My phrases',
   'opt.tab.data': 'Data',
@@ -187,7 +187,7 @@ const en: Record<Key, string> = {
   'opt.hk.offsetForward': 'Offset +100 ms (Shift: +1 s)',
   'opt.privacy': 'Privacy',
   'opt.privacy.text':
-    'Subtext collects no telemetry and sends nothing to its developer. A search on OpenSubtitles sends the title, season, episode and languages. When you ask for an explanation, the AI provider you chose receives: the show and episode details from “What are we watching?”, the episode subtitle text (all of it, or a window around the line within the budget), the selected line and words, your level and explanation language. Video and audio are never sent. Subtitles, cached explanations and phrases stay in this browser.',
+    'WhatchaSay? collects no telemetry and sends nothing to its developer. A search on OpenSubtitles sends the title, season, episode and languages. When you ask for an explanation, the AI provider you chose receives: the show and episode details from “What are we watching?”, the episode subtitle text (all of it, or a window around the line within the budget), the selected line and words, your level and explanation language. Video and audio are never sent. Subtitles, cached explanations and phrases stay in this browser.',
   'opt.saved': 'Saved',
   'opt.cache': 'Explanation cache',
   'opt.cache.stats': 'Entries: {n}, ~{mb} MB',

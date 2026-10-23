@@ -35,7 +35,7 @@
 
   function exportCsv() {
     download(
-      `subtext-phrases-${new Date().toISOString().slice(0, 10)}.csv`,
+      `whatchasay-phrases-${new Date().toISOString().slice(0, 10)}.csv`,
       phrasesToCsv(filtered),
       'text/csv',
     );

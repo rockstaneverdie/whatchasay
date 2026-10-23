@@ -34,7 +34,7 @@
 
   async function exportJson() {
     download(
-      `subtext-cache-${new Date().toISOString().slice(0, 10)}.json`,
+      `whatchasay-cache-${new Date().toISOString().slice(0, 10)}.json`,
       JSON.stringify(await exportCache()),
       'application/json',
     );

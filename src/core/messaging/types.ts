@@ -69,7 +69,7 @@ export type Wire<T> = { ok: true; value: T } | { ok: false; error: string };
 
 export async function sendBg<T extends BgRequest>(msg: T): Promise<BgResponse<T>> {
   const res = (await browser.runtime.sendMessage(msg)) as Wire<BgResponse<T>> | undefined;
-  if (!res) throw new Error(`[subtext] no response to ${msg.type}`);
+  if (!res) throw new Error(`[whatchasay] no response to ${msg.type}`);
   if (!res.ok) throw new Error(res.error);
   return res.value;
 }

@@ -2,7 +2,7 @@ import type { Level, OutLang } from '../storage/settings';
 import type { ExplainRequest, TranscriptLine } from './types';
 
 /** Bump on any change to the wording below; it is part of the cache key (FR-K1). */
-export const PROMPT_VERSION = 'v1-2026-10-22';
+export const PROMPT_VERSION = 'v2-2026-10-23';
 
 const OUT_LANG_DESC: Record<OutLang, string> = {
   ru: 'Russian',
@@ -10,7 +10,7 @@ const OUT_LANG_DESC: Record<OutLang, string> = {
 };
 
 /** TZ 8.1, kept verbatim apart from the placeholders. */
-const SYSTEM_TEMPLATE = `You are "Subtext", a viewing companion that helps a learner of English (CEFR level {{LEVEL}})
+const SYSTEM_TEMPLATE = `You are "WhatchaSay", a viewing companion that helps a learner of English (CEFR level {{LEVEL}})
 understand a TV show or film in its original language.
 
 You get: show info, the episode transcript (each line has an id), a target line, and

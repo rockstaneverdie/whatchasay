@@ -1,4 +1,4 @@
-# Subtext
+# WhatchaSay?
 
 Firefox extension: a karaoke-style subtitle panel over any HTML5 `<video>`, plus an AI that explains slang, idioms,
 wordplay and references **in the context of the scene**. Click a word or a line (or select a fragment) — the video
@@ -18,7 +18,7 @@ Spec: [docs/TZ.md](docs/TZ.md) · decisions: [docs/decisions.md](docs/decisions.
 | `pnpm install`        | dependencies (+ `wxt prepare`)                                                              |
 | `pnpm dev`            | dev build with reload in Firefox                                                            |
 | `pnpm build`          | production build → `.output/firefox-mv3`                                                    |
-| `pnpm zip`            | `.output/subtext-<version>-firefox.zip`                                                     |
+| `pnpm zip`            | `.output/whatchasay-<version>-firefox.zip`                                                  |
 | `pnpm lint`           | ESLint + Prettier check + svelte-check                                                      |
 | `pnpm test`           | Vitest unit and component tests                                                             |
 | `pnpm web-ext:lint`   | `web-ext lint` on the production build                                                      |

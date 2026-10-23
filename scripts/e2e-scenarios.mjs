@@ -125,12 +125,18 @@ export const scenarios = {
     await ctx.shot('m1-playing');
     if (mismatches > 0) throw new Error(`${mismatches} out-of-sync samples: ${JSON.stringify(samples)}`);
 
-    // Word fill progresses within the active line.
+    // Word fill progresses within the active line (paused mid-cue, so the check never lands in a gap).
+    await ctx.driver.executeScript(
+      `const v = document.querySelector('video'); v.pause(); v.currentTime = 8.2;`,
+    );
+    await ctx.sleep(300);
     const words = await ctx.driver.executeScript(`
       const root = document.querySelector('${HOST}').shadowRoot;
       return [...root.querySelectorAll('.line.active .w')].map((w) => w.style.getPropertyValue('--p'));
     `);
-    if (!words.length || !words.some((p) => Number(p) > 0)) throw new Error(`no word progress: ${words}`);
+    const filled = words.map(Number);
+    if (!filled.some((p) => p > 0) || !filled.some((p) => p < 1))
+      throw new Error(`no partial word fill: ${words}`);
 
     // Seek: the panel updates within a frame.
     const seek = await ctx.driver.executeAsyncScript(`
@@ -670,7 +676,10 @@ export const scenarios = {
     await driver.actions().sendKeys(Key.ESCAPE).perform();
     if (p.active[0] !== 4) throw new Error(`active ${p.active} after sync`);
     if (form[3] !== '2020') throw new Error(`media info not filled: ${form}`);
-    if (stats.lastHeaders['user-agent'] !== 'Subtext v0.1.0' || stats.lastHeaders['api-key'] !== 'e2e-key') {
+    if (
+      stats.lastHeaders['user-agent'] !== 'WhatchaSay v0.1.0' ||
+      stats.lastHeaders['api-key'] !== 'e2e-key'
+    ) {
       throw new Error(`headers: ${JSON.stringify(stats.lastHeaders)}`);
     }
     return { query, request: stats.lastQuery, toast: done.toast, mediaForm: form };

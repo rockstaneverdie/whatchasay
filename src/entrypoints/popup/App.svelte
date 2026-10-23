@@ -62,7 +62,7 @@
 </script>
 
 <main>
-  <h1>Subtext</h1>
+  <h1>WhatchaSay?</h1>
   {#if !loaded}
     <p class="muted">…</p>
   {:else}
